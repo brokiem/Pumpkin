@@ -5,6 +5,7 @@ mod biome;
 mod blender;
 pub mod carver;
 pub mod chunk_noise;
+mod features;
 mod generator;
 mod generic_generator;
 pub mod height_limit;
