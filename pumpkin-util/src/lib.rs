@@ -70,7 +70,7 @@ impl<T> Index<usize> for MutableSplitSlice<'_, T> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct DoublePerlinNoiseParametersCodec {
     #[serde(rename = "firstOctave")]
     pub first_octave: i32,

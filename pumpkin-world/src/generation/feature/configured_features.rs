@@ -1,19 +1,30 @@
-use crate::{block::BlockStateCodec, generation::{block_state_provider::BlockStateProvider, rule_test::RuleTest}};
+use pumpkin_util::{math::position::BlockPos, random::RandomGenerator};
+
+use crate::{
+    ProtoChunk,
+    block::BlockStateCodec,
+    generation::{rule_test::RuleTest},
+};
+
+use super::features::simple_block::SimpleBlockFeature;
 
 pub enum ConfiguredFeature {
     Ore(OreFeatureConfig),
-    SimpleBlock(SimpleBlockFeatureConfig)
+    SimpleBlock(SimpleBlockFeature),
 }
 
-pub struct SimpleBlockFeatureConfig {
-    to_place: BlockStateProvider,
-    schedule_tick: Option<bool>,
-}
-
-pub struct RandomPatchFeatureConfig {
-    tries: u8,
-    xz_spread: u8,
-    y_spread: u8
+impl ConfiguredFeature {
+    pub fn generate(
+        &self,
+        chunk: &mut ProtoChunk,
+        random: &mut RandomGenerator,
+        pos: BlockPos,
+    ) -> bool {
+        match self {
+            ConfiguredFeature::Ore(feature) => false, // TODO
+            ConfiguredFeature::SimpleBlock(feature) => feature.generate(chunk, random, pos),
+        }
+    }
 }
 
 pub struct OreFeatureConfig {

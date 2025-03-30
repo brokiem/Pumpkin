@@ -3,12 +3,12 @@
 pub mod aquifer_sampler;
 mod biome;
 mod blender;
+mod block_state_provider;
 pub mod carver;
 pub mod chunk_noise;
 mod feature;
 mod generator;
 mod generic_generator;
-mod block_state_provider;
 pub mod height_limit;
 pub mod height_provider;
 mod implementation;

@@ -1,2 +1,3 @@
 /// Here is everything which is configuired and is ready to be generated
-mod random_patch;
+pub mod random_patch;
+pub mod simple_block;
