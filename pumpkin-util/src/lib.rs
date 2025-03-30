@@ -70,6 +70,13 @@ impl<T> Index<usize> for MutableSplitSlice<'_, T> {
     }
 }
 
+#[derive(Deserialize)]
+pub struct DoublePerlinNoiseParametersCodec {
+    #[serde(rename = "firstOctave")]
+    pub first_octave: i32,
+    pub amplitudes: Vec<f64>,
+}
+
 impl<T> IndexMut<usize> for MutableSplitSlice<'_, T> {
     #[allow(clippy::comparison_chain)]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {

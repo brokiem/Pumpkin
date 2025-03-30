@@ -3,7 +3,7 @@ pub mod registry;
 pub mod state;
 
 use num_derive::FromPrimitive;
-use pumpkin_data::block::{Axis, Facing, HorizontalFacing};
+use pumpkin_data::block::{Axis, Block, Facing, HorizontalFacing};
 use pumpkin_util::math::vector3::Vector3;
 
 use serde::Deserialize;
@@ -42,6 +42,12 @@ impl TryFrom<i32> for BlockDirection {
 pub struct BlockStateCodec {
     pub name: String,
     // TODO: properties...
+}
+
+impl BlockStateCodec {
+    pub fn to_block(&self) -> Block {
+        Block::from_registry_key(&self.name.replace("minecraft:", "")).unwrap()
+    }
 }
 
 impl BlockDirection {
