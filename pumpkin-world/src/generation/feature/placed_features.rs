@@ -1,39 +1,145 @@
 use pumpkin_util::{
-    math::{int_provider::IntProvider, position::BlockPos, vector3::Vector3},
-    random::RandomGenerator,
+    math::{int_provider::IntProvider, position::BlockPos, vector2::Vector2, vector3::Vector3},
+    random::{RandomGenerator, RandomImpl},
 };
 use serde::Deserialize;
-use std::iter;
+use std::{collections::HashMap, iter, sync::LazyLock};
 
 use crate::{ProtoChunk, generation::height_provider::HeightProvider};
 
+use super::configured_features::{CONFIGURED_FEATURES, ConfiguredFeature};
+
+pub static PLACED_FEATURES: LazyLock<HashMap<String, PlacedFeature>> = LazyLock::new(|| {
+    serde_json::from_str(include_str!("../../../../assets/placed_feature.json"))
+        .expect("Could not parse placed_feature.json registry.")
+});
+
 #[derive(Deserialize)]
-pub struct PlacedFeatureEntry {
-    feature: String,
+pub struct PlacedFeature {
+    /// The name of the configuired feature
+    feature: Feature,
     placement: Vec<PlacementModifier>,
 }
 
 #[derive(Deserialize)]
+#[serde(untagged)]
+pub enum Feature {
+    Named(String),
+    Inlined(ConfiguredFeature),
+}
+
+impl PlacedFeature {
+    pub fn generate(
+        &self,
+        chunk: &mut ProtoChunk,
+        min_y: i8,
+        height: u16,
+        feature_name: &str, // This placed feature
+        random: &mut RandomGenerator,
+        pos: BlockPos,
+    ) -> bool {
+        let mut stream: Vec<BlockPos> = vec![pos];
+
+        for modifier in &self.placement {
+            let mut next_stream: Vec<BlockPos> = Vec::new();
+            for _ in stream {
+                if let Some(positions) =
+                    modifier.get_positions(chunk, min_y, height, &feature_name, random, pos)
+                {
+                    next_stream.extend(positions);
+                }
+            }
+            stream = next_stream;
+        }
+        let feature = match &self.feature {
+            Feature::Named(name) => CONFIGURED_FEATURES
+                .get(&name.replace("minecraft:", ""))
+                .unwrap(),
+            Feature::Inlined(feature) => feature,
+        };
+        let mut ret = false;
+        for pos in stream {
+            if feature.generate(chunk, min_y, height, feature_name, random, pos) {
+                ret = true;
+            }
+        }
+        ret
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type")]
 pub enum PlacementModifier {
+    #[serde(rename = "minecraft:block_predicate_filter")]
     BlockPredicateFilter,
+    #[serde(rename = "minecraft:rarity_filter")]
     RarityFilter(RarityFilterPlacementModifier),
+    #[serde(rename = "minecraft:surface_relative_threshold_filter")]
     SurfaceRelativeThresholdFilter,
+    #[serde(rename = "minecraft:surface_water_depth_filter")]
     SurfaceWaterDepthFilter,
+    #[serde(rename = "minecraft:biome")]
     Biome(BiomePlacementModifier),
+    #[serde(rename = "minecraft:count")]
     Count(CountPlacementModifier),
+    #[serde(rename = "minecraft:noise_based_count")]
     NoiseBasedCount,
+    #[serde(rename = "minecraft:noise_threshold_count")]
     NoiseThresholdCount,
+    #[serde(rename = "minecraft:count_on_every_layer")]
     CountOnEveryLayer,
+    #[serde(rename = "minecraft:environment_scan")]
     EnvironmentScan,
-    Heightmap,
+    #[serde(rename = "minecraft:heightmap")]
+    Heightmap(HeightmapPlacementModifier),
+    #[serde(rename = "minecraft:height_range")]
     HeightRange(HeightRangePlacementModifier),
+    #[serde(rename = "minecraft:in_square")]
     InSquare(SquarePlacementModifier),
+    #[serde(rename = "minecraft:random_offset")]
     RandomOffset,
+    #[serde(rename = "minecraft:fixed_placement")]
     FixedPlacement,
 }
 
-pub struct FeaturePlacementContext {
-    placed_feature: String,
+impl PlacementModifier {
+    pub fn get_positions(
+        &self,
+        chunk: &ProtoChunk,
+        min_y: i8,
+        height: u16,
+        feature: &str,
+        random: &mut RandomGenerator,
+        pos: BlockPos,
+    ) -> Option<impl Iterator<Item = BlockPos>> {
+        match self {
+            PlacementModifier::BlockPredicateFilter => None,
+            PlacementModifier::RarityFilter(modifier) => {
+                modifier.get_positions(chunk, feature, random, pos)
+            }
+            PlacementModifier::SurfaceRelativeThresholdFilter => None,
+            PlacementModifier::SurfaceWaterDepthFilter => None,
+            PlacementModifier::Biome(modifier) => {
+                modifier.get_positions(chunk, feature, random, pos)
+            }
+            PlacementModifier::Count(modifier) => Some(modifier.get_positions(random, pos)),
+            PlacementModifier::NoiseBasedCount => None,
+            PlacementModifier::NoiseThresholdCount => None,
+            PlacementModifier::CountOnEveryLayer => None,
+            PlacementModifier::EnvironmentScan => None,
+            PlacementModifier::Heightmap(modifier) => {
+                modifier.get_positions(chunk, min_y, height, random, pos)
+            }
+            PlacementModifier::HeightRange(modifier) => {
+                Some(modifier.get_positions(min_y, height, random, pos))
+            }
+            PlacementModifier::InSquare(_) => {
+                Some(SquarePlacementModifier::get_positions(random, pos))
+            }
+            PlacementModifier::RandomOffset => None,
+            PlacementModifier::FixedPlacement => None,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -44,7 +150,7 @@ pub struct RarityFilterPlacementModifier {
 impl ConditionalPlacementModifier for RarityFilterPlacementModifier {
     fn should_place(
         &self,
-        context: &FeaturePlacementContext,
+        feature: &str,
         chunk: &ProtoChunk,
         random: &mut RandomGenerator,
         pos: BlockPos,
@@ -60,10 +166,10 @@ impl SquarePlacementModifier {
     pub fn get_positions(
         random: &mut RandomGenerator,
         pos: BlockPos,
-    ) -> impl Iterator<Item = BlockPos> {
+    ) -> Box<dyn Iterator<Item = BlockPos>> {
         let x = random.next_bounded_i32(16) + pos.0.x;
         let z = random.next_bounded_i32(16) + pos.0.z;
-        iter::once(BlockPos(Vector3::new(x, pos.0.y, z)))
+        Box::new(iter::once(BlockPos(Vector3::new(x, pos.0.y, z))))
     }
 }
 
@@ -84,15 +190,15 @@ pub struct BiomePlacementModifier;
 impl ConditionalPlacementModifier for BiomePlacementModifier {
     fn should_place(
         &self,
-        context: &FeaturePlacementContext,
+        feature: &str,
         chunk: &ProtoChunk,
-        random: &mut RandomGenerator,
+        _random: &mut RandomGenerator,
         pos: BlockPos,
     ) -> bool {
         // we check if the current feature can be applied to the biome at the pos
         let features = chunk.get_biome(&pos.0).features.first().unwrap();
-        let this_feature = &context.placed_feature;
-        features.contains(&this_feature.as_str())
+        let this_feature = &feature;
+        features.contains(&this_feature)
     }
 }
 
@@ -108,39 +214,45 @@ impl HeightRangePlacementModifier {
         height: u16,
         random: &mut RandomGenerator,
         pos: BlockPos,
-    ) -> BlockPos {
+    ) -> Box<dyn Iterator<Item = BlockPos>> {
         let mut pos = pos.clone();
         pos.0.y = self.height.get(random, min_y, height);
-        pos
+        Box::new(iter::once(pos))
     }
 }
 
+#[derive(Deserialize)]
 pub struct HeightmapPlacementModifier {
     heightmap: String,
 }
 
-// impl HeightmapPlacementModifier {
-//     pub fn get_positions(
-//         &self,
-//         min_y: i8,
-//         height: u16,
-//         random: &mut RandomGenerator,
-//         pos: BlockPos,
-//     ) -> BlockPos {
-//         let x = pos.0.x;
-//         let z = pos.0.z;
-//     }
-// }
-//
+impl HeightmapPlacementModifier {
+    pub fn get_positions(
+        &self,
+        chunk: &ProtoChunk,
+        min_y: i8,
+        height: u16,
+        random: &mut RandomGenerator,
+        pos: BlockPos,
+    ) -> Option<Box<dyn Iterator<Item = BlockPos>>> {
+        let x = pos.0.x;
+        let z = pos.0.z;
+        let top = chunk.top_block_height_exclusive(&Vector2::new(x, z));
+        if top > min_y as i32 {
+            return Some(Box::new(iter::once(BlockPos(Vector3::new(x, top, z)))));
+        }
+        None
+    }
+}
 
 pub trait CountPlacementModifierBase {
     fn get_positions(
         &self,
         _random: &mut RandomGenerator,
         pos: BlockPos,
-    ) -> impl Iterator<Item = BlockPos> {
+    ) -> Box<dyn Iterator<Item = BlockPos>> {
         let count = self.get_count();
-        iter::repeat(pos).take(count as usize)
+        Box::new(iter::repeat(pos).take(count as usize))
     }
 
     fn get_count(&self) -> i32;
@@ -150,12 +262,12 @@ pub trait ConditionalPlacementModifier {
     fn get_positions(
         &self,
         chunk: &ProtoChunk,
-        context: &FeaturePlacementContext,
+        feature: &str,
         random: &mut RandomGenerator,
         pos: BlockPos,
-    ) -> Option<impl Iterator<Item = BlockPos>> {
-        if self.should_place(context, chunk, random, pos) {
-            return Some(iter::once(pos));
+    ) -> Option<Box<dyn Iterator<Item = BlockPos>>> {
+        if self.should_place(feature, chunk, random, pos) {
+            return Some(Box::new(iter::once(pos)));
         } else {
             return None;
         }
@@ -163,7 +275,7 @@ pub trait ConditionalPlacementModifier {
 
     fn should_place(
         &self,
-        context: &FeaturePlacementContext,
+        feature: &str,
         chunk: &ProtoChunk,
         random: &mut RandomGenerator,
         pos: BlockPos,

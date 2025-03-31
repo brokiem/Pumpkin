@@ -49,6 +49,7 @@ impl WorldGenerator for VanillaGenerator {
         proto_chunk.populate_biomes();
         proto_chunk.populate_noise();
         proto_chunk.build_surface();
+        proto_chunk.generate_features();
 
         for x in 0..16u8 {
             for z in 0..16u8 {

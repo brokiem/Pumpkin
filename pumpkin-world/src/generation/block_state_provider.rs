@@ -10,9 +10,23 @@ use crate::block::BlockStateCodec;
 
 use super::noise::perlin::DoublePerlinNoiseSampler;
 
+#[derive(Deserialize)]
+#[serde(tag = "type")]
 pub enum BlockStateProvider {
+    #[serde(rename = "minecraft:simple_state_provider")]
+    SimpleStateProvider(SimpleStateProvider),
+    #[serde(rename = "minecraft:weighted_state_provider")]
+    WeightedBlockStateProvider(WeightedBlockStateProvider),
+    #[serde(rename = "minecraft:noise_threshold_provider")]
     NoiseThresholdBlockStateProvider(NoiseThresholdBlockStateProvider),
+    #[serde(rename = "minecraft:noise_provider")]
     NoiseProvider(NoiseBlockStateProvider),
+    #[serde(rename = "minecraft:dual_noise_provider")]
+    DualNoiseBlockStateProvider(DualNoiseBlockStateProvider),
+    #[serde(rename = "minecraft:rotated_block_provider")]
+    PillarBlockStateProvider(PillarBlockStateProvider),
+    #[serde(rename = "minecraft:randomized_int_state_provider")]
+    RandomizedIntBlockStateProvider(RandomizedIntBlockStateProvider),
 }
 
 impl BlockStateProvider {
@@ -22,7 +36,47 @@ impl BlockStateProvider {
                 provider.get(random, pos)
             }
             BlockStateProvider::NoiseProvider(provider) => provider.get(pos),
+            BlockStateProvider::SimpleStateProvider(provider) => provider.get(pos),
+            BlockStateProvider::WeightedBlockStateProvider(weighted_block_state_provider) => {
+                todo!()
+            }
+            BlockStateProvider::DualNoiseBlockStateProvider(dual_noise_block_state_provider) => {
+                todo!()
+            }
+            BlockStateProvider::PillarBlockStateProvider(pillar_block_state_provider) => todo!(),
+            BlockStateProvider::RandomizedIntBlockStateProvider(
+                randomized_int_block_state_provider,
+            ) => todo!(),
         }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct RandomizedIntBlockStateProvider {}
+
+#[derive(Deserialize)]
+pub struct PillarBlockStateProvider {
+    // TODO
+}
+
+#[derive(Deserialize)]
+pub struct DualNoiseBlockStateProvider {
+    // TODO
+}
+
+#[derive(Deserialize)]
+pub struct WeightedBlockStateProvider {
+    // TODO
+}
+
+#[derive(Deserialize)]
+pub struct SimpleStateProvider {
+    state: BlockStateCodec,
+}
+
+impl SimpleStateProvider {
+    pub fn get(&self, _pos: BlockPos) -> Block {
+        self.state.to_block()
     }
 }
 

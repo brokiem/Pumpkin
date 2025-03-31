@@ -1,21 +1,29 @@
 use pumpkin_util::{
     math::{position::BlockPos, vector3::Vector3},
-    random::RandomGenerator,
+    random::{RandomGenerator, RandomImpl},
+};
+use serde::Deserialize;
+
+use crate::{
+    ProtoChunk,
+    generation::feature::{configured_features::ConfiguredFeature, placed_features::PlacedFeature},
 };
 
-use crate::{ProtoChunk, generation::feature::configured_features::ConfiguredFeature};
-
+#[derive(Deserialize)]
 pub struct RandomPatchFeature {
     tries: u8,
     xz_spread: u8,
     y_spread: u8,
-    feature: ConfiguredFeature,
+    feature: Box<PlacedFeature>,
 }
 
 impl RandomPatchFeature {
     pub fn generate(
         &self,
         chunk: &mut ProtoChunk,
+        min_y: i8,
+        height: u16,
+        feature: &str, // This placed feature
         random: &mut RandomGenerator,
         pos: BlockPos,
     ) -> bool {
@@ -28,7 +36,10 @@ impl RandomPatchFeature {
                 pos.0.y + (random.next_bounded_i32(y) - random.next_bounded_i32(y)),
                 pos.0.z + (random.next_bounded_i32(xz) - random.next_bounded_i32(xz)),
             );
-            if !self.feature.generate(chunk, random, BlockPos(pos)) {
+            if !self
+                .feature
+                .generate(chunk, min_y, height, feature, random, BlockPos(pos))
+            {
                 continue;
             }
             i += 1;
