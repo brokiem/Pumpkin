@@ -15,7 +15,7 @@ mod implementation;
 pub mod noise;
 pub mod noise_router;
 pub mod ore_sampler;
-mod positions;
+pub mod positions;
 pub mod proto_chunk;
 mod rule_test;
 mod seed;
@@ -27,7 +27,7 @@ use derive_getters::Getters;
 pub use generator::WorldGenerator;
 use implementation::VanillaGenerator;
 use pumpkin_util::random::{
-    RandomDeriver, RandomImpl, legacy_rand::LegacyRand, xoroshiro128::Xoroshiro,
+    RandomDeriver, RandomDeriverImpl, RandomImpl, legacy_rand::LegacyRand, xoroshiro128::Xoroshiro,
 };
 pub use seed::Seed;
 
@@ -49,10 +49,11 @@ pub struct GlobalRandomConfig {
 impl GlobalRandomConfig {
     pub fn new(seed: u64, legacy: bool) -> Self {
         let random_deriver = if legacy {
-            RandomDeriver::Legacy(LegacyRand::from_seed(seed).next_splitter())
+            LegacyRand::from_seed(seed).next_splitter()
         } else {
-            RandomDeriver::Xoroshiro(Xoroshiro::from_seed(seed).next_splitter())
+            Xoroshiro::from_seed(seed).next_splitter()
         };
+
         let aquifer_deriver = random_deriver
             .split_string("minecraft:aquifer")
             .next_splitter();
