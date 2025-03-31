@@ -1,3 +1,4 @@
+use pumpkin_data::block::Block;
 use pumpkin_util::{
     math::{int_provider::IntProvider, position::BlockPos, vector2::Vector2, vector3::Vector3},
     random::{RandomGenerator, RandomImpl},
@@ -5,7 +6,10 @@ use pumpkin_util::{
 use serde::Deserialize;
 use std::{collections::HashMap, iter, sync::LazyLock};
 
-use crate::{ProtoChunk, generation::height_provider::HeightProvider};
+use crate::{
+    ProtoChunk,
+    generation::{block_predicate::BlockPredicate, height_provider::HeightProvider},
+};
 
 use super::configured_features::{CONFIGURED_FEATURES, ConfiguredFeature};
 
@@ -71,7 +75,7 @@ impl PlacedFeature {
 #[serde(tag = "type")]
 pub enum PlacementModifier {
     #[serde(rename = "minecraft:block_predicate_filter")]
-    BlockPredicateFilter,
+    BlockPredicateFilter(BlockFilterPlacementModifier),
     #[serde(rename = "minecraft:rarity_filter")]
     RarityFilter(RarityFilterPlacementModifier),
     #[serde(rename = "minecraft:surface_relative_threshold_filter")]
@@ -113,7 +117,9 @@ impl PlacementModifier {
         pos: BlockPos,
     ) -> Option<impl Iterator<Item = BlockPos>> {
         match self {
-            PlacementModifier::BlockPredicateFilter => None,
+            PlacementModifier::BlockPredicateFilter(modifier) => {
+                modifier.get_positions(chunk, feature, random, pos)
+            }
             PlacementModifier::RarityFilter(modifier) => {
                 modifier.get_positions(chunk, feature, random, pos)
             }
@@ -139,6 +145,25 @@ impl PlacementModifier {
             PlacementModifier::RandomOffset => None,
             PlacementModifier::FixedPlacement => None,
         }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct BlockFilterPlacementModifier {
+    predicate: BlockPredicate,
+}
+
+impl ConditionalPlacementModifier for BlockFilterPlacementModifier {
+    fn should_place(
+        &self,
+        feature: &str,
+        chunk: &ProtoChunk,
+        random: &mut RandomGenerator,
+        pos: BlockPos,
+    ) -> bool {
+        // :crying
+        self.predicate
+            .test(&Block::from_id(chunk.get_block_state(&pos.0).block_id).unwrap())
     }
 }
 

@@ -38,7 +38,8 @@ impl BlockStateProvider {
             BlockStateProvider::NoiseProvider(provider) => provider.get(pos),
             BlockStateProvider::SimpleStateProvider(provider) => provider.get(pos),
             BlockStateProvider::WeightedBlockStateProvider(weighted_block_state_provider) => {
-                todo!()
+                // TODO
+                Block::AIR
             }
             BlockStateProvider::DualNoiseBlockStateProvider(dual_noise_block_state_provider) => {
                 todo!()

@@ -19,7 +19,6 @@ impl SimpleBlockFeature {
         pos: BlockPos,
     ) -> bool {
         let block = self.to_place.get(random, pos);
-        dbg!(block.name);
         // TODO: check things..
         chunk.set_block_state(
             &pos.0,

@@ -3,6 +3,7 @@
 pub mod aquifer_sampler;
 mod biome;
 mod blender;
+mod block_predicate;
 mod block_state_provider;
 pub mod carver;
 pub mod chunk_noise;

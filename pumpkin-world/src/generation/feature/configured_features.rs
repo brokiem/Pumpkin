@@ -186,6 +186,12 @@ impl ConfiguredFeature {
     ) -> bool {
         match self {
             ConfiguredFeature::SimpleBlock(feature) => feature.generate(chunk, random, pos),
+            ConfiguredFeature::Flower(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
+            ConfiguredFeature::NoBonemealFlower(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
             ConfiguredFeature::RandomPatch(feature) => {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
