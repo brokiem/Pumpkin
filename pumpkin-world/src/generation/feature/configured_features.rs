@@ -185,14 +185,17 @@ impl ConfiguredFeature {
         pos: BlockPos,
     ) -> bool {
         match self {
-            ConfiguredFeature::SimpleBlock(feature) => feature.generate(chunk, random, pos),
-            ConfiguredFeature::Flower(feature) => {
+            Self::SimpleBlock(feature) => feature.generate(chunk, random, pos),
+            Self::Flower(feature) => {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
-            ConfiguredFeature::NoBonemealFlower(feature) => {
+            Self::NoBonemealFlower(feature) => {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
-            ConfiguredFeature::RandomPatch(feature) => {
+            Self::RandomPatch(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
+            Self::SimpleRandomSelector(feature) => {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
             _ => false, // TODO
