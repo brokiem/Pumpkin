@@ -192,7 +192,19 @@ impl ConfiguredFeature {
             Self::NoBonemealFlower(feature) => {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
+            Self::DesertWell(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
+            Self::BlockColumn(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
             Self::RandomPatch(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
+            Self::RandomBooleanSelector(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
+            Self::RandomSelector(feature) => {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
             Self::SimpleRandomSelector(feature) => {

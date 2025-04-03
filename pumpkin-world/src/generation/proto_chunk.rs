@@ -262,6 +262,12 @@ impl<'a> ProtoChunk<'a> {
         self.flat_block_map[index]
     }
 
+    #[inline]
+    pub fn is_air(&self, local_pos: &Vector3<i32>) -> bool {
+        let block = self.get_block_state(local_pos);
+        block.is_air()
+    }
+
     pub fn set_block_state(&mut self, local_pos: &Vector3<i32>, block_state: ChunkBlockState) {
         if !(block_state.of_block(AIR_BLOCK.block_id)
             || block_state.of_block(CAVE_AIR_BLOCK.block_id)

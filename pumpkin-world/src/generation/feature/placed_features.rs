@@ -1,5 +1,6 @@
 use pumpkin_data::block::Block;
 use pumpkin_util::{
+    biome::TEMPERATURE_NOISE,
     math::{int_provider::IntProvider, position::BlockPos, vector2::Vector2, vector3::Vector3},
     random::{RandomGenerator, RandomImpl},
 };
@@ -17,6 +18,22 @@ pub static PLACED_FEATURES: LazyLock<HashMap<String, PlacedFeature>> = LazyLock:
     serde_json::from_str(include_str!("../../../../assets/placed_feature.json"))
         .expect("Could not parse placed_feature.json registry.")
 });
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum PlacedFeatureWrapper {
+    Direct(PlacedFeature),
+    Named(String),
+}
+
+impl PlacedFeatureWrapper {
+    pub fn get(&self) -> &PlacedFeature {
+        match self {
+            Self::Named(name) => &PLACED_FEATURES.get(name).unwrap(),
+            Self::Direct(feature) => feature,
+        }
+    }
+}
 
 #[derive(Deserialize)]
 pub struct PlacedFeature {
@@ -46,7 +63,7 @@ impl PlacedFeature {
 
         for modifier in &self.placement {
             let mut next_stream: Vec<BlockPos> = Vec::new();
-            for _ in stream {
+            for posx in stream {
                 if let Some(positions) =
                     modifier.get_positions(chunk, min_y, height, &feature_name, random, pos)
                 {
@@ -89,7 +106,7 @@ pub enum PlacementModifier {
     #[serde(rename = "minecraft:noise_based_count")]
     NoiseBasedCount,
     #[serde(rename = "minecraft:noise_threshold_count")]
-    NoiseThresholdCount,
+    NoiseThresholdCount(NoiseThresholdCountPlacementModifier),
     #[serde(rename = "minecraft:count_on_every_layer")]
     CountOnEveryLayer,
     #[serde(rename = "minecraft:environment_scan")]
@@ -101,7 +118,7 @@ pub enum PlacementModifier {
     #[serde(rename = "minecraft:in_square")]
     InSquare(SquarePlacementModifier),
     #[serde(rename = "minecraft:random_offset")]
-    RandomOffset,
+    RandomOffset(RandomOffsetPlacementModifier),
     #[serde(rename = "minecraft:fixed_placement")]
     FixedPlacement,
 }
@@ -130,7 +147,9 @@ impl PlacementModifier {
             }
             PlacementModifier::Count(modifier) => Some(modifier.get_positions(random, pos)),
             PlacementModifier::NoiseBasedCount => None,
-            PlacementModifier::NoiseThresholdCount => None,
+            PlacementModifier::NoiseThresholdCount(feature) => {
+                Some(feature.get_positions(random, pos))
+            }
             PlacementModifier::CountOnEveryLayer => None,
             PlacementModifier::EnvironmentScan => None,
             PlacementModifier::Heightmap(modifier) => {
@@ -142,9 +161,46 @@ impl PlacementModifier {
             PlacementModifier::InSquare(_) => {
                 Some(SquarePlacementModifier::get_positions(random, pos))
             }
-            PlacementModifier::RandomOffset => None,
+            PlacementModifier::RandomOffset(modifier) => Some(modifier.get_positions(random, pos)),
             PlacementModifier::FixedPlacement => None,
         }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct NoiseThresholdCountPlacementModifier {
+    noise_level: f64,
+    below_noise: i32,
+    above_noise: i32,
+}
+
+impl CountPlacementModifierBase for NoiseThresholdCountPlacementModifier {
+    fn get_count(&self, _random: &mut RandomGenerator, pos: BlockPos) -> i32 {
+        let noise = TEMPERATURE_NOISE.sample(pos.0.x as f64 / 200.0, pos.0.z as f64, false);
+        if noise < self.noise_level {
+            self.below_noise
+        } else {
+            self.above_noise
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct RandomOffsetPlacementModifier {
+    xz_spread: IntProvider,
+    y_spread: IntProvider,
+}
+
+impl RandomOffsetPlacementModifier {
+    pub fn get_positions(
+        &self,
+        random: &mut RandomGenerator,
+        pos: BlockPos,
+    ) -> Box<dyn Iterator<Item = BlockPos>> {
+        let x = pos.0.x + self.xz_spread.get(random);
+        let y = pos.0.y + self.y_spread.get(random);
+        let z = pos.0.z + self.xz_spread.get(random);
+        Box::new(iter::once(BlockPos(Vector3::new(x, y, z))))
     }
 }
 
@@ -162,8 +218,7 @@ impl ConditionalPlacementModifier for BlockFilterPlacementModifier {
         pos: BlockPos,
     ) -> bool {
         // :crying
-        self.predicate
-            .test(&Block::from_id(chunk.get_block_state(&pos.0).block_id).unwrap())
+        self.predicate.test(chunk, &pos)
     }
 }
 
@@ -204,8 +259,8 @@ pub struct CountPlacementModifier {
 }
 
 impl CountPlacementModifierBase for CountPlacementModifier {
-    fn get_count(&self) -> i32 {
-        self.count.get()
+    fn get_count(&self, random: &mut RandomGenerator, _pos: BlockPos) -> i32 {
+        self.count.get(random)
     }
 }
 
@@ -273,14 +328,14 @@ impl HeightmapPlacementModifier {
 pub trait CountPlacementModifierBase {
     fn get_positions(
         &self,
-        _random: &mut RandomGenerator,
+        random: &mut RandomGenerator,
         pos: BlockPos,
     ) -> Box<dyn Iterator<Item = BlockPos>> {
-        let count = self.get_count();
+        let count = self.get_count(random, pos);
         Box::new(iter::repeat(pos).take(count as usize))
     }
 
-    fn get_count(&self) -> i32;
+    fn get_count(&self, random: &mut RandomGenerator, pos: BlockPos) -> i32;
 }
 
 pub trait ConditionalPlacementModifier {

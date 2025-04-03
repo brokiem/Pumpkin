@@ -38,7 +38,7 @@ impl VeryBiasedToBottomHeightProvider {
         let inner = self.inner.unwrap_or(0) as i32;
 
         let min_rnd = random.next_inbetween_i32(min + inner, max);
-        let max_rnd = random.next_inbetween_i32(min, min_rnd + inner);
+        let max_rnd = random.next_inbetween_i32(min, min_rnd - 1);
 
         random.next_inbetween_i32(min, max_rnd - 1 + inner)
     }
@@ -55,7 +55,7 @@ impl UniformHeightProvider {
         let min = self.min_inclusive.get_y(min_y, height) as i32;
         let max = self.max_inclusive.get_y(min_y, height) as i32;
 
-        random.next_bounded_i32(max - min + 1) + min
+        random.next_inbetween_i32(min, max)
     }
 }
 
