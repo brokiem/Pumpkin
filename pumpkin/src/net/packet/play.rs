@@ -9,6 +9,7 @@ use crate::net::PlayerConfig;
 use crate::plugin::player::player_chat::PlayerChatEvent;
 use crate::plugin::player::player_command_send::PlayerCommandSendEvent;
 use crate::plugin::player::player_move::PlayerMoveEvent;
+use crate::server::seasonal_events;
 use crate::world::BlockFlags;
 use crate::{
     command::CommandSender,
@@ -688,10 +689,15 @@ impl Player {
 
                 let config = advanced_config();
 
+                let message = match seasonal_events::modify_chat_message(&event.message) {
+                    Some(m) => m,
+                    None => event.message.clone(),
+                };
+
                 let decorated_message = &TextComponent::chat_decorated(
                     config.chat.format.clone(),
                     gameprofile.name.clone(),
-                    event.message.clone(),
+                    message,
                 );
 
                 let entity = &self.living_entity.entity;
@@ -841,7 +847,7 @@ impl Player {
                 self.kick(TextComponent::text("Invalid client status"))
                     .await;
             }
-        };
+        }
     }
 
     pub async fn handle_interact(&self, interact: SInteract) {
@@ -914,7 +920,7 @@ impl Player {
                     ))
                     .await;
                     return;
-                };
+                }
             }
             ActionType::Interact | ActionType::InteractAt => {
                 log::debug!("todo");
@@ -1227,7 +1233,7 @@ impl Player {
         if let Some(entity) = entity_from_egg(stack.item.id) {
             self.spawn_entity_from_egg(entity, location, &face).await;
             should_try_decrement = true;
-        };
+        }
 
         if should_try_decrement {
             // TODO: Config
@@ -1319,7 +1325,7 @@ impl Player {
             // Item drop
             self.drop_item(item_stack.item.id, u32::from(item_stack.item_count))
                 .await;
-        };
+        }
         Ok(())
     }
 
