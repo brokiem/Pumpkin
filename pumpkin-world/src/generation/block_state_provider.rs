@@ -1,7 +1,7 @@
 use pumpkin_data::{block::Block, chunk::DoublePerlinNoiseParameters};
 use pumpkin_util::{
     DoublePerlinNoiseParametersCodec,
-    math::position::BlockPos,
+    math::{clamped_map, position::BlockPos, vector3::Vector3},
     random::{RandomGenerator, RandomImpl, legacy_rand::LegacyRand},
 };
 use serde::Deserialize;
@@ -41,9 +41,7 @@ impl BlockStateProvider {
                 // TODO
                 Block::AIR
             }
-            BlockStateProvider::DualNoiseBlockStateProvider(dual_noise_block_state_provider) => {
-                todo!()
-            }
+            BlockStateProvider::DualNoiseBlockStateProvider(provider) => provider.get(pos),
             BlockStateProvider::PillarBlockStateProvider(pillar_block_state_provider) => todo!(),
             BlockStateProvider::RandomizedIntBlockStateProvider(
                 randomized_int_block_state_provider,
@@ -62,7 +60,48 @@ pub struct PillarBlockStateProvider {
 
 #[derive(Deserialize)]
 pub struct DualNoiseBlockStateProvider {
-    // TODO
+    #[serde(flatten)]
+    base: NoiseBlockStateProvider,
+    variety: [u32; 2],
+    slow_noise: DoublePerlinNoiseParametersCodec,
+    slow_scale: f32,
+}
+
+impl DualNoiseBlockStateProvider {
+    pub fn get(&self, pos: BlockPos) -> Block {
+        let noise = perlin_codec_to_static(self.slow_noise.clone());
+        let sampler = DoublePerlinNoiseSampler::new(
+            &mut RandomGenerator::Legacy(LegacyRand::from_seed(self.base.base.seed as u64)),
+            &noise,
+            false,
+        );
+        let slow_noise = self.get_slow_noise(&pos, &sampler);
+        let mapped = clamped_map(
+            slow_noise,
+            -1.0,
+            1.0,
+            self.variety[0] as f64,
+            self.variety[1] as f64 + 1.0,
+        ) as i32;
+        let mut list = Vec::with_capacity(mapped as usize);
+        for i in 0..mapped {
+            let value = self.get_slow_noise(
+                &BlockPos(pos.0.add(&Vector3::new(i * 54545, 0, i * 34234))),
+                &sampler,
+            );
+            list.push(self.base.get_state_by_value(&self.base.states, value));
+        }
+        let value = self.base.base.get_noise(pos);
+        self.base.get_state_by_value(&list, value).to_block()
+    }
+
+    fn get_slow_noise(&self, pos: &BlockPos, sampler: &DoublePerlinNoiseSampler) -> f64 {
+        sampler.sample(
+            pos.0.x as f64 * self.slow_scale as f64,
+            pos.0.y as f64 * self.slow_scale as f64,
+            pos.0.z as f64 * self.slow_scale as f64,
+        )
+    }
 }
 
 #[derive(Deserialize)]
@@ -119,12 +158,12 @@ pub struct NoiseBlockStateProvider {
 impl NoiseBlockStateProvider {
     pub fn get(&self, pos: BlockPos) -> Block {
         let value = self.base.get_noise(pos);
-        self.get_state_by_value(value)
+        self.get_state_by_value(&self.states, value).to_block()
     }
 
-    fn get_state_by_value(&self, value: f64) -> Block {
+    fn get_state_by_value(&self, states: &Vec<BlockStateCodec>, value: f64) -> BlockStateCodec {
         let val = ((1.0 + value) / 2.0).clamp(0.0, 0.9999);
-        self.states[(val * self.states.len() as f64) as usize].to_block()
+        states[(val * states.len() as f64) as usize].clone()
     }
 }
 

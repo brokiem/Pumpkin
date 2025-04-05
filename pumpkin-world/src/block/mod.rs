@@ -1,5 +1,4 @@
 pub mod interactive;
-pub mod registry;
 pub mod state;
 
 use num_derive::FromPrimitive;
@@ -38,7 +37,7 @@ impl TryFrom<i32> for BlockDirection {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct BlockStateCodec {
     pub name: String,

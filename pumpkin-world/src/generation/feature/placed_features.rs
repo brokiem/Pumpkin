@@ -64,9 +64,14 @@ impl PlacedFeature {
         for modifier in &self.placement {
             let mut next_stream: Vec<BlockPos> = Vec::new();
             for posx in stream {
-                if let Some(positions) =
-                    modifier.get_positions(chunk, min_y, height, &feature_name, random, pos)
-                {
+                if let Some(positions) = modifier.get_positions(
+                    chunk,
+                    min_y,
+                    height,
+                    &feature_name,
+                    random,
+                    BlockPos(Vector3::new(pos.0.x, posx.0.y, pos.0.z)),
+                ) {
                     next_stream.extend(positions);
                 }
             }
@@ -275,7 +280,7 @@ impl ConditionalPlacementModifier for BiomePlacementModifier {
         _random: &mut RandomGenerator,
         pos: BlockPos,
     ) -> bool {
-        // we check if the current feature can be applied to the biome at the pos
+        //we check if the current feature can be applied to the biome at the pos
         let features = chunk.get_biome(&pos.0).features.first().unwrap();
         let this_feature = &feature;
         features.contains(&this_feature)

@@ -4,8 +4,10 @@ use std::{
     hash::Hash,
 };
 
-use pumpkin_data::{block::Block, chunk::Biome};
-use pumpkin_macros::block_state;
+use pumpkin_data::{
+    block::{Block, get_state_by_state_id},
+    chunk::Biome,
+};
 use pumpkin_util::encompassing_bits;
 
 use crate::block::ChunkBlockState;
@@ -16,16 +18,6 @@ use super::format::{
 
 /// 3d array indexed by y,z,x
 type AbstractCube<T, const DIM: usize> = [[[T; DIM]; DIM]; DIM];
-
-// TODO: Verify the default state for these blocks is the only state
-const AIR: ChunkBlockState = block_state!("air");
-const CAVE_AIR: ChunkBlockState = block_state!("cave_air");
-const VOID_AIR: ChunkBlockState = block_state!("void_air");
-
-#[inline]
-fn is_not_air_block(state_id: u16) -> bool {
-    state_id != AIR.state_id && state_id != CAVE_AIR.state_id && state_id != VOID_AIR.state_id
-}
 
 #[derive(Debug)]
 pub struct HeterogeneousPaletteData<V: Hash + Eq + Copy, const DIM: usize> {
@@ -384,7 +376,7 @@ impl BlockPalette {
     pub fn non_air_block_count(&self) -> u16 {
         match self {
             Self::Homogeneous(registry_id) => {
-                if is_not_air_block(*registry_id) {
+                if !get_state_by_state_id(*registry_id).unwrap().air {
                     Self::VOLUME as u16
                 } else {
                     0
@@ -394,7 +386,7 @@ impl BlockPalette {
                 .counts
                 .iter()
                 .map(|(registry_id, count)| {
-                    if is_not_air_block(*registry_id) {
+                    if !get_state_by_state_id(*registry_id).unwrap().air {
                         *count
                     } else {
                         0

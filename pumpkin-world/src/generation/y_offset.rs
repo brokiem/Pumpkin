@@ -15,7 +15,7 @@ impl YOffset {
             YOffset::BelowTop(below_top) => {
                 height as i16 - 1 + min_y as i16 - below_top.below_top as i16
             }
-            YOffset::Absolute(absolute) => absolute.absolute as i16,
+            YOffset::Absolute(absolute) => absolute.absolute,
         }
     }
 }

@@ -1,3 +1,4 @@
+use pumpkin_data::block::get_state_by_state_id;
 use pumpkin_util::{math::position::BlockPos, random::RandomGenerator};
 use serde::Deserialize;
 
@@ -19,12 +20,14 @@ impl SimpleBlockFeature {
         pos: BlockPos,
     ) -> bool {
         let block = self.to_place.get(random, pos);
+        let state = get_state_by_state_id(block.default_state_id).unwrap();
         // TODO: check things..
         chunk.set_block_state(
             &pos.0,
             ChunkBlockState {
                 state_id: block.default_state_id,
                 block_id: block.id,
+                air: state.air,
             },
         );
         // TODO: schedule tick when needed

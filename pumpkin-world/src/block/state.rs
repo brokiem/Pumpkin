@@ -1,11 +1,12 @@
-use crate::chunk::format::PaletteBlockEntry;
+use pumpkin_data::block::{get_block, get_state_by_state_id};
 
-use super::registry::{get_block, get_state_by_state_id};
+use crate::chunk::format::PaletteBlockEntry;
 
 #[derive(Clone, Copy, Debug, Eq)]
 pub struct ChunkBlockState {
     pub state_id: u16,
     pub block_id: u16,
+    pub air: bool,
 }
 
 impl PartialEq for ChunkBlockState {
@@ -18,6 +19,7 @@ impl ChunkBlockState {
     pub const AIR: ChunkBlockState = ChunkBlockState {
         state_id: 0,
         block_id: 0,
+        air: true,
     };
 
     /// Get a Block from the Vanilla Block registry at Runtime
@@ -26,6 +28,7 @@ impl ChunkBlockState {
         block.map(|block| Self {
             state_id: block.default_state_id,
             block_id: block.id,
+            air: get_state_by_state_id(block.default_state_id).unwrap().air,
         })
     }
 
@@ -34,6 +37,7 @@ impl ChunkBlockState {
 
         if let Some(block) = block {
             let mut state_id = block.default_state_id;
+            let state = get_state_by_state_id(block.default_state_id).unwrap();
 
             if let Some(properties) = palette.properties.clone() {
                 let mut properties_vec = Vec::new();
@@ -47,6 +51,7 @@ impl ChunkBlockState {
             return Some(Self {
                 state_id,
                 block_id: block.id,
+                air: state.air,
             });
         }
 
@@ -59,7 +64,7 @@ impl ChunkBlockState {
 
     #[inline]
     pub fn is_air(&self) -> bool {
-        get_state_by_state_id(self.state_id).unwrap().air
+        self.air
     }
 
     #[inline]

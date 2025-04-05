@@ -1,9 +1,9 @@
 use itertools::Itertools;
-use pumpkin_data::block::{Block, BlockState};
+use pumpkin_data::block::{Block, BlockState, get_state_by_state_id};
 use pumpkin_util::math::{position::BlockPos, vector3::Vector3};
 use serde::Deserialize;
 
-use crate::{ProtoChunk, block::registry::get_state_by_state_id};
+use crate::ProtoChunk;
 #[derive(Deserialize)]
 pub struct EmptyTODOStruct {}
 

@@ -1,4 +1,4 @@
-use pumpkin_data::chunk::Biome;
+use pumpkin_data::{block::get_state_by_state_id, chunk::Biome};
 use pumpkin_macros::block_state;
 use pumpkin_util::{
     math::{position::BlockPos, vector2::Vector2, vector3::Vector3},
@@ -7,7 +7,7 @@ use pumpkin_util::{
 
 use crate::{
     biome::{BiomeSupplier, MultiNoiseBiomeSupplier, hash_seed},
-    block::{ChunkBlockState, registry::get_state_by_state_id},
+    block::ChunkBlockState,
     chunk::CHUNK_AREA,
     generation::{biome, positions::chunk_pos},
 };
@@ -33,8 +33,6 @@ use super::{
 };
 
 const AIR_BLOCK: ChunkBlockState = block_state!("air");
-const CAVE_AIR_BLOCK: ChunkBlockState = block_state!("cave_air");
-const VOID_AIR_BLOCK: ChunkBlockState = block_state!("void_air");
 
 pub struct StandardChunkFluidLevelSampler {
     top_fluid: FluidLevel,
@@ -216,19 +214,6 @@ impl<'a> ProtoChunk<'a> {
     }
 
     #[inline]
-    fn local_pos_to_block_index(&self, local_pos: &Vector3<i32>) -> usize {
-        #[cfg(debug_assertions)]
-        {
-            assert!(local_pos.x >= 0 && local_pos.x <= 15);
-            assert!(local_pos.y < self.height() as i32 && local_pos.y >= 0);
-            assert!(local_pos.z >= 0 && local_pos.z <= 15);
-        }
-        self.height() as usize * CHUNK_DIM as usize * local_pos.x as usize
-            + CHUNK_DIM as usize * local_pos.y as usize
-            + local_pos.z as usize
-    }
-
-    #[inline]
     fn local_biome_pos_to_biome_index(&self, local_biome_pos: &Vector3<i32>) -> usize {
         #[cfg(debug_assertions)]
         {
@@ -263,16 +248,30 @@ impl<'a> ProtoChunk<'a> {
     }
 
     #[inline]
+    fn local_pos_to_block_index(&self, local_pos: &Vector3<i32>) -> usize {
+        #[cfg(debug_assertions)]
+        {
+            assert!(local_pos.x >= 0 && local_pos.x <= 15);
+            assert!(
+                local_pos.y < self.height() as i32 && local_pos.y >= 0,
+                "{local_pos:?}"
+            );
+            assert!(local_pos.z >= 0 && local_pos.z <= 15);
+        }
+        self.height() as usize * CHUNK_DIM as usize * local_pos.x as usize
+            + CHUNK_DIM as usize * local_pos.y as usize
+            + local_pos.z as usize
+    }
+
+    #[inline]
     pub fn is_air(&self, local_pos: &Vector3<i32>) -> bool {
         let block = self.get_block_state(local_pos);
         block.is_air()
     }
 
     pub fn set_block_state(&mut self, local_pos: &Vector3<i32>, block_state: ChunkBlockState) {
-        if !(block_state.of_block(AIR_BLOCK.block_id)
-            || block_state.of_block(CAVE_AIR_BLOCK.block_id)
-            || block_state.of_block(VOID_AIR_BLOCK.block_id))
-        {
+        // TODO: this is slow
+        if !block_state.is_air() {
             self.maybe_update_height_map(local_pos);
         }
 
@@ -286,7 +285,7 @@ impl<'a> ProtoChunk<'a> {
     }
 
     #[inline]
-    pub fn get_biome(&self, global_biome_pos: &Vector3<i32>) -> &'static Biome {
+    fn get_biome_raw(&self, global_biome_pos: &Vector3<i32>) -> &'static Biome {
         let local_pos = Vector3::new(
             global_biome_pos.x & biome_coords::from_block(15),
             global_biome_pos.y - biome_coords::from_block(self.bottom_y() as i32),
@@ -434,7 +433,7 @@ impl<'a> ProtoChunk<'a> {
         }
     }
 
-    fn get_biome_for_terrain_gen(&self, global_block_pos: &Vector3<i32>) -> &'static Biome {
+    pub fn get_biome(&self, global_block_pos: &Vector3<i32>) -> &'static Biome {
         let seed_biome_pos = biome::get_biome_blend(
             self.bottom_y(),
             self.height(),
@@ -442,7 +441,7 @@ impl<'a> ProtoChunk<'a> {
             global_block_pos,
         );
 
-        self.get_biome(&seed_biome_pos)
+        self.get_biome_raw(&seed_biome_pos)
     }
 
     /// Constructs the terrain surface, although "surface" is a misnomer as it also places underground blocks like bedrock and deepslate.
@@ -478,7 +477,7 @@ impl<'a> ProtoChunk<'a> {
                     top_block
                 };
 
-                let this_biome = self.get_biome_for_terrain_gen(&Vector3::new(x, biome_y, z));
+                let this_biome = self.get_biome(&Vector3::new(x, biome_y, z));
                 if this_biome == &Biome::ERODED_BADLANDS {
                     terrain_builder.place_badlands_pillar(
                         self,
@@ -543,7 +542,7 @@ impl<'a> ProtoChunk<'a> {
                     // panic!("Blending with biome {:?} at: {:?}", biome, biome_pos);
 
                     if state.id == self.default_block.state_id {
-                        context.biome = self.get_biome_for_terrain_gen(&context.block_pos);
+                        context.biome = self.get_biome(&context.block_pos);
                         let new_state = self.settings.surface_rule.try_apply(self, &mut context);
 
                         if let Some(state) = new_state {
@@ -586,10 +585,12 @@ impl<'a> ProtoChunk<'a> {
         let min_y = self.noise_sampler.min_y();
         let height = self.noise_sampler.height();
 
+        // TODO: index features, so they have the right order
+
         let bottom_section = section_coords::block_to_section(min_y) as i32;
         let block_pos = BlockPos(Vector3::new(
             section_coords::section_to_block(chunk_pos.x),
-            bottom_section,
+            section_coords::section_to_block(bottom_section),
             section_coords::section_to_block(chunk_pos.z),
         ));
         let mut random = RandomGenerator::Xoroshiro(Xoroshiro::from_seed(get_seed()));

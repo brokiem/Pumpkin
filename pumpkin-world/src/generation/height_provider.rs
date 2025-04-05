@@ -35,7 +35,7 @@ impl VeryBiasedToBottomHeightProvider {
     pub fn get(&self, random: &mut RandomGenerator, min_y: i8, height: u16) -> i32 {
         let min = self.min_inclusive.get_y(min_y, height) as i32;
         let max = self.max_inclusive.get_y(min_y, height) as i32;
-        let inner = self.inner.unwrap_or(0) as i32;
+        let inner = self.inner.unwrap_or(1) as i32;
 
         let min_rnd = random.next_inbetween_i32(min + inner, max);
         let max_rnd = random.next_inbetween_i32(min, min_rnd - 1);

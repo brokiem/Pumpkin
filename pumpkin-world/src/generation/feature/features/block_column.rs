@@ -76,6 +76,7 @@ impl BlockColumnFeature {
                     crate::block::ChunkBlockState {
                         state_id: block.default_state_id,
                         block_id: block.id,
+                        air: false, // ?
                     },
                 );
                 mutable = BlockPos(mutable.0.add(&self.direction.to_offset()));
