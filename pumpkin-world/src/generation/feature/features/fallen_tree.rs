@@ -4,3 +4,5 @@ use serde::Deserialize;
 pub struct FallenTreeFeature {
     // TODO
 }
+
+impl FallenTreeFeature {}

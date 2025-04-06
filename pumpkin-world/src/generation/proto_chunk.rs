@@ -590,7 +590,7 @@ impl<'a> ProtoChunk<'a> {
         let bottom_section = section_coords::block_to_section(min_y) as i32;
         let block_pos = BlockPos(Vector3::new(
             section_coords::section_to_block(chunk_pos.x),
-            section_coords::section_to_block(bottom_section),
+            bottom_section,
             section_coords::section_to_block(chunk_pos.z),
         ));
         let mut random = RandomGenerator::Xoroshiro(Xoroshiro::from_seed(get_seed()));

@@ -4,3 +4,4 @@ mod configured_features;
 pub mod placed_features;
 
 mod features;
+mod size;

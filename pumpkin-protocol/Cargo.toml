@@ -35,4 +35,4 @@ take_mut = "0.2.2"
 
 [dev-dependencies]
 # Validate correctness
-flate2 = "1.1.0"
+flate2 = "1.1.1"

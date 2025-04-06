@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::LazyLock};
 use pumpkin_util::{math::position::BlockPos, random::RandomGenerator};
 use serde::Deserialize;
 
-use crate::{ProtoChunk, block::BlockStateCodec, generation::rule_test::RuleTest};
+use crate::ProtoChunk;
 
 use super::features::{
     bamboo::BambooFeature, basalt_columns::BasaltColumnsFeature,
@@ -202,6 +202,9 @@ impl ConfiguredFeature {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
             Self::RandomBooleanSelector(feature) => {
+                feature.generate(chunk, min_y, height, feature_name, random, pos)
+            }
+            Self::Tree(feature) => {
                 feature.generate(chunk, min_y, height, feature_name, random, pos)
             }
             Self::RandomSelector(feature) => {

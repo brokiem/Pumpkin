@@ -1,4 +1,3 @@
-use pumpkin_data::block::Block;
 use pumpkin_util::{
     biome::TEMPERATURE_NOISE,
     math::{int_provider::IntProvider, position::BlockPos, vector2::Vector2, vector3::Vector3},
@@ -29,7 +28,7 @@ pub enum PlacedFeatureWrapper {
 impl PlacedFeatureWrapper {
     pub fn get(&self) -> &PlacedFeature {
         match self {
-            Self::Named(name) => &PLACED_FEATURES.get(name).unwrap(),
+            Self::Named(name) => PLACED_FEATURES.get(name).unwrap(),
             Self::Direct(feature) => feature,
         }
     }
@@ -68,9 +67,9 @@ impl PlacedFeature {
                     chunk,
                     min_y,
                     height,
-                    &feature_name,
+                    feature_name,
                     random,
-                    BlockPos(Vector3::new(pos.0.x, posx.0.y, pos.0.z)),
+                    BlockPos(Vector3::new(pos.0.x, pos.0.y, pos.0.z)),
                 ) {
                     next_stream.extend(positions);
                 }
@@ -103,7 +102,7 @@ pub enum PlacementModifier {
     #[serde(rename = "minecraft:surface_relative_threshold_filter")]
     SurfaceRelativeThresholdFilter,
     #[serde(rename = "minecraft:surface_water_depth_filter")]
-    SurfaceWaterDepthFilter,
+    SurfaceWaterDepthFilter(SurfaceWaterDepthFilterPlacementModifier),
     #[serde(rename = "minecraft:biome")]
     Biome(BiomePlacementModifier),
     #[serde(rename = "minecraft:count")]
@@ -146,7 +145,9 @@ impl PlacementModifier {
                 modifier.get_positions(chunk, feature, random, pos)
             }
             PlacementModifier::SurfaceRelativeThresholdFilter => None,
-            PlacementModifier::SurfaceWaterDepthFilter => None,
+            PlacementModifier::SurfaceWaterDepthFilter(modfier) => {
+                modfier.get_positions(chunk, feature, random, pos)
+            }
             PlacementModifier::Biome(modifier) => {
                 modifier.get_positions(chunk, feature, random, pos)
             }
@@ -270,6 +271,25 @@ impl CountPlacementModifierBase for CountPlacementModifier {
 }
 
 #[derive(Deserialize)]
+pub struct SurfaceWaterDepthFilterPlacementModifier {
+    max_water_depth: i32,
+}
+
+impl ConditionalPlacementModifier for SurfaceWaterDepthFilterPlacementModifier {
+    fn should_place(
+        &self,
+        feature: &str,
+        chunk: &ProtoChunk,
+        random: &mut RandomGenerator,
+        pos: BlockPos,
+    ) -> bool {
+        let top = chunk.top_block_height_exclusive(&Vector2::new(pos.0.x, pos.0.z));
+        // TODO: This is nonsense and broken, add ocean floor
+        top <= self.max_water_depth
+    }
+}
+
+#[derive(Deserialize)]
 pub struct BiomePlacementModifier;
 
 impl ConditionalPlacementModifier for BiomePlacementModifier {
@@ -283,7 +303,7 @@ impl ConditionalPlacementModifier for BiomePlacementModifier {
         //we check if the current feature can be applied to the biome at the pos
         let features = chunk.get_biome(&pos.0).features.first().unwrap();
         let this_feature = &feature;
-        features.contains(&this_feature)
+        features.contains(this_feature)
     }
 }
 
@@ -300,7 +320,7 @@ impl HeightRangePlacementModifier {
         random: &mut RandomGenerator,
         pos: BlockPos,
     ) -> Box<dyn Iterator<Item = BlockPos>> {
-        let mut pos = pos.clone();
+        let mut pos = pos;
         pos.0.y = self.height.get(random, min_y, height);
         Box::new(iter::once(pos))
     }
@@ -337,7 +357,7 @@ pub trait CountPlacementModifierBase {
         pos: BlockPos,
     ) -> Box<dyn Iterator<Item = BlockPos>> {
         let count = self.get_count(random, pos);
-        Box::new(iter::repeat(pos).take(count as usize))
+        Box::new(std::iter::repeat_n(pos, count as usize))
     }
 
     fn get_count(&self, random: &mut RandomGenerator, pos: BlockPos) -> i32;
@@ -352,9 +372,9 @@ pub trait ConditionalPlacementModifier {
         pos: BlockPos,
     ) -> Option<Box<dyn Iterator<Item = BlockPos>>> {
         if self.should_place(feature, chunk, random, pos) {
-            return Some(Box::new(iter::once(pos)));
+            Some(Box::new(iter::once(pos)))
         } else {
-            return None;
+            None
         }
     }
 

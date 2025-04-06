@@ -48,6 +48,7 @@ impl BlockPredicate {
             Self::NotBlockPredicate(predicate) => predicate.test(chunk, pos),
             Self::AnyOfBlockPredicate(predicate) => predicate.test(chunk, pos),
             Self::AllOfBlockPredicate(predicate) => predicate.test(chunk, pos),
+            Self::WouldSurviveBlockPredicate(_) => true, // TODO
             _ => false,
         }
     }
@@ -156,7 +157,7 @@ impl OffsetBlocksBlockPredicate {
         if let Some(offset) = self.offset {
             return pos.offset(offset);
         }
-        pos.clone()
+        *pos
     }
     pub fn get_block(&self, chunk: &ProtoChunk, pos: &BlockPos) -> Block {
         let pos = self.get(pos);

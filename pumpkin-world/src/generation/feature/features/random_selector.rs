@@ -4,10 +4,7 @@ use pumpkin_util::{
 };
 use serde::Deserialize;
 
-use crate::{
-    ProtoChunk,
-    generation::feature::placed_features::{PLACED_FEATURES, PlacedFeature, PlacedFeatureWrapper},
-};
+use crate::{ProtoChunk, generation::feature::placed_features::PlacedFeatureWrapper};
 
 #[derive(Deserialize)]
 pub struct RandomFeature {

@@ -8,9 +8,7 @@ use serde::Deserialize;
 use crate::{
     ProtoChunk,
     block::{BlockDirection, ChunkBlockState},
-    generation::{
-        Direction, chunk_noise::WATER_BLOCK, height_limit::HeightLimitView, positions::block_pos,
-    },
+    generation::{chunk_noise::WATER_BLOCK, height_limit::HeightLimitView},
 };
 
 #[derive(Deserialize)]

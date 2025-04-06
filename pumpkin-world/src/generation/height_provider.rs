@@ -84,8 +84,6 @@ impl TrapezoidHeightProvider {
 
         let l = (k as i32 - plateau) / 2;
         let m = k as i32 - l;
-        return i as i32
-            + random.next_inbetween_i32(0, m as i32)
-            + random.next_inbetween_i32(0, l as i32);
+        i as i32 + random.next_inbetween_i32(0, m) + random.next_inbetween_i32(0, l)
     }
 }
