@@ -1,5 +1,8 @@
-use pumpkin_data::{block::get_state_by_state_id, chunk::Biome};
-use pumpkin_macros::block_state;
+use pumpkin_data::{
+    block::{BlockState, get_state_by_state_id},
+    chunk::Biome,
+};
+use pumpkin_macros::{block_state, default_block_state};
 use pumpkin_util::{
     math::{position::BlockPos, vector2::Vector2, vector3::Vector3},
     random::{RandomGenerator, get_seed, xoroshiro128::Xoroshiro},
@@ -32,7 +35,7 @@ use super::{
     surface::{MaterialRuleContext, estimate_surface_height, terrain::SurfaceTerrainBuilder},
 };
 
-const AIR_BLOCK: ChunkBlockState = block_state!("air");
+const AIR_BLOCK: BlockState = default_block_state!("air");
 
 pub struct StandardChunkFluidLevelSampler {
     top_fluid: FluidLevel,
@@ -97,7 +100,7 @@ pub struct ProtoChunk<'a> {
     pub surface_height_estimate_sampler: SurfaceHeightEstimateSampler<'a>,
     random_config: &'a GlobalRandomConfig,
     settings: &'a GenerationSettings,
-    default_block: ChunkBlockState,
+    default_block: BlockState,
     biome_mixer_seed: i64,
     // These are local positions
     flat_block_map: Box<[ChunkBlockState]>,
@@ -269,9 +272,8 @@ impl<'a> ProtoChunk<'a> {
         block.is_air()
     }
 
-    pub fn set_block_state(&mut self, local_pos: &Vector3<i32>, block_state: ChunkBlockState) {
-        // TODO: this is slow
-        if !block_state.is_air() {
+    pub fn set_block_state(&mut self, local_pos: &Vector3<i32>, block_state: BlockState) {
+        if !block_state.air {
             self.maybe_update_height_map(local_pos);
         }
 

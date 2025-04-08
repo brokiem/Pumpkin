@@ -10,11 +10,9 @@ use pumpkin_data::{
 };
 use pumpkin_util::encompassing_bits;
 
-use crate::block::ChunkBlockState;
+use crate::block::{BlockStateCodec, ChunkBlockState};
 
-use super::format::{
-    ChunkSectionBiomes, ChunkSectionBlockStates, PaletteBiomeEntry, PaletteBlockEntry,
-};
+use super::format::{ChunkSectionBiomes, ChunkSectionBlockStates, PaletteBiomeEntry};
 
 /// 3d array indexed by y,z,x
 type AbstractCube<T, const DIM: usize> = [[[T; DIM]; DIM]; DIM];
@@ -436,10 +434,10 @@ impl BlockPalette {
         }
     }
 
-    fn block_state_id_to_palette_entry(registry_id: u16) -> PaletteBlockEntry {
+    fn block_state_id_to_palette_entry(registry_id: u16) -> BlockStateCodec {
         let block = Block::from_state_id(registry_id).unwrap();
 
-        PaletteBlockEntry {
+        BlockStateCodec {
             name: block.name.into(),
             properties: {
                 if let Some(properties) = block.properties(registry_id) {

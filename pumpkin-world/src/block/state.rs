@@ -1,12 +1,12 @@
-use pumpkin_data::block::{get_block, get_state_by_state_id};
+use pumpkin_data::block::get_block;
 
-use crate::chunk::format::PaletteBlockEntry;
+use super::BlockStateCodec;
 
+/// This is used for in Memory representation, the goal is to keep this lightweight
 #[derive(Clone, Copy, Debug, Eq)]
 pub struct ChunkBlockState {
     pub state_id: u16,
     pub block_id: u16,
-    pub air: bool,
 }
 
 impl PartialEq for ChunkBlockState {
@@ -19,7 +19,6 @@ impl ChunkBlockState {
     pub const AIR: ChunkBlockState = ChunkBlockState {
         state_id: 0,
         block_id: 0,
-        air: true,
     };
 
     /// Get a Block from the Vanilla Block registry at Runtime
@@ -28,16 +27,15 @@ impl ChunkBlockState {
         block.map(|block| Self {
             state_id: block.default_state_id,
             block_id: block.id,
-            air: get_state_by_state_id(block.default_state_id).unwrap().air,
         })
     }
 
-    pub fn from_palette(palette: &PaletteBlockEntry) -> Option<Self> {
+    pub fn from_palette(palette: &BlockStateCodec) -> Option<Self> {
+        // Duplicated code :C
         let block = get_block(palette.name.as_str());
 
         if let Some(block) = block {
             let mut state_id = block.default_state_id;
-            let state = get_state_by_state_id(block.default_state_id).unwrap();
 
             if let Some(properties) = palette.properties.clone() {
                 let mut properties_vec = Vec::new();
@@ -51,7 +49,6 @@ impl ChunkBlockState {
             return Some(Self {
                 state_id,
                 block_id: block.id,
-                air: state.air,
             });
         }
 
@@ -60,11 +57,6 @@ impl ChunkBlockState {
 
     pub fn get_id(&self) -> u16 {
         self.state_id
-    }
-
-    #[inline]
-    pub fn is_air(&self) -> bool {
-        self.air
     }
 
     #[inline]

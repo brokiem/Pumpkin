@@ -1,4 +1,4 @@
-use pumpkin_data::block::Block;
+use pumpkin_data::block::{Block, BlockState, get_block_by_state_id};
 use pumpkin_util::{
     math::position::BlockPos,
     random::{RandomGenerator, RandomImpl},
@@ -24,16 +24,9 @@ impl TrunkPlacer {
             + random.next_bounded_i32(self.height_rand_b as i32 + 1) as u32
     }
 
-    pub fn place(&self, chunk: &mut ProtoChunk, pos: &BlockPos, trunk_block: &Block) -> bool {
+    pub fn place(&self, chunk: &mut ProtoChunk, pos: &BlockPos, trunk_block: &BlockState) -> bool {
         if TreeFeature::can_replace(chunk, pos) {
-            chunk.set_block_state(
-                &pos.0,
-                crate::block::ChunkBlockState {
-                    state_id: trunk_block.default_state_id,
-                    block_id: trunk_block.id,
-                    air: false,
-                },
-            );
+            chunk.set_block_state(&pos.0, trunk_block);
             return true;
         }
         false
@@ -44,7 +37,7 @@ impl TrunkPlacer {
         height: u32,
         start_pos: BlockPos,
         chunk: &mut ProtoChunk,
-        trunk_block: &Block,
+        trunk_block: &BlockState,
     ) {
         self.r#type
             .generate(self, height, start_pos, chunk, trunk_block);

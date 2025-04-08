@@ -15,10 +15,10 @@ use crate::{
 pub struct DesertWellFeature;
 
 impl DesertWellFeature {
-    const CAN_GENERATE: ChunkBlockState = block_state!("sand");
-    const SAND: ChunkBlockState = block_state!("sand");
-    const SLAB: ChunkBlockState = block_state!("sandstone_slab");
-    const WALL: ChunkBlockState = block_state!("sandstone");
+    const CAN_GENERATE: ChunkBlockState = default_block_state!("sand");
+    const SAND: ChunkBlockState = default_block_state!("sand");
+    const SLAB: ChunkBlockState = default_block_state!("sandstone_slab");
+    const WALL: ChunkBlockState = default_block_state!("sandstone");
 
     pub fn generate(
         &self,
@@ -35,7 +35,7 @@ impl DesertWellFeature {
             block_pos = block_pos.down();
         }
         let block = chunk.get_block_state(&pos.0);
-        const CAN_GENERATE: ChunkBlockState = block_state!("sand");
+        const CAN_GENERATE: ChunkBlockState = default_block_state!("sand");
         if CAN_GENERATE.block_id != block.block_id {
             return false;
         }

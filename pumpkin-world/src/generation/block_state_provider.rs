@@ -1,4 +1,7 @@
-use pumpkin_data::{block::Block, chunk::DoublePerlinNoiseParameters};
+use pumpkin_data::{
+    block::{Block, BlockState, get_state_by_state_id},
+    chunk::DoublePerlinNoiseParameters,
+};
 use pumpkin_util::{
     DoublePerlinNoiseParametersCodec,
     math::{clamped_map, position::BlockPos, vector3::Vector3},
@@ -30,7 +33,7 @@ pub enum BlockStateProvider {
 }
 
 impl BlockStateProvider {
-    pub fn get(&self, random: &mut RandomGenerator, pos: BlockPos) -> Block {
+    pub fn get(&self, random: &mut RandomGenerator, pos: BlockPos) -> BlockState {
         match self {
             BlockStateProvider::NoiseThresholdBlockStateProvider(provider) => {
                 provider.get(random, pos)
@@ -39,7 +42,7 @@ impl BlockStateProvider {
             BlockStateProvider::SimpleStateProvider(provider) => provider.get(pos),
             BlockStateProvider::WeightedBlockStateProvider(weighted_block_state_provider) => {
                 // TODO
-                Block::AIR
+                get_state_by_state_id(Block::AIR.default_state_id).unwrap()
             }
             BlockStateProvider::DualNoiseBlockStateProvider(provider) => provider.get(pos),
             BlockStateProvider::PillarBlockStateProvider(pillar_block_state_provider) => todo!(),
@@ -68,7 +71,7 @@ pub struct DualNoiseBlockStateProvider {
 }
 
 impl DualNoiseBlockStateProvider {
-    pub fn get(&self, pos: BlockPos) -> Block {
+    pub fn get(&self, pos: BlockPos) -> BlockState {
         let noise = perlin_codec_to_static(self.slow_noise.clone());
         let sampler = DoublePerlinNoiseSampler::new(
             &mut RandomGenerator::Legacy(LegacyRand::from_seed(self.base.base.seed as u64)),
@@ -92,7 +95,10 @@ impl DualNoiseBlockStateProvider {
             list.push(self.base.get_state_by_value(&self.base.states, value));
         }
         let value = self.base.base.get_noise(pos);
-        self.base.get_state_by_value(&list, value).to_block()
+        self.base
+            .get_state_by_value(&list, value)
+            .to_state()
+            .unwrap()
     }
 
     fn get_slow_noise(&self, pos: &BlockPos, sampler: &DoublePerlinNoiseSampler) -> f64 {
@@ -115,8 +121,8 @@ pub struct SimpleStateProvider {
 }
 
 impl SimpleStateProvider {
-    pub fn get(&self, _pos: BlockPos) -> Block {
-        self.state.to_block()
+    pub fn get(&self, _pos: BlockPos) -> BlockState {
+        self.state.to_state().unwrap()
     }
 }
 
@@ -156,9 +162,11 @@ pub struct NoiseBlockStateProvider {
 }
 
 impl NoiseBlockStateProvider {
-    pub fn get(&self, pos: BlockPos) -> Block {
+    pub fn get(&self, pos: BlockPos) -> BlockState {
         let value = self.base.get_noise(pos);
-        self.get_state_by_value(&self.states, value).to_block()
+        self.get_state_by_value(&self.states, value)
+            .to_state()
+            .unwrap()
     }
 
     fn get_state_by_value(&self, states: &Vec<BlockStateCodec>, value: f64) -> BlockStateCodec {
@@ -179,17 +187,19 @@ pub struct NoiseThresholdBlockStateProvider {
 }
 
 impl NoiseThresholdBlockStateProvider {
-    pub fn get(&self, random: &mut RandomGenerator, pos: BlockPos) -> Block {
+    pub fn get(&self, random: &mut RandomGenerator, pos: BlockPos) -> BlockState {
         let value = self.base.get_noise(pos);
         if value < self.threshold as f64 {
             return self.low_states[random.next_bounded_i32(self.low_states.len() as i32) as usize]
-                .to_block();
+                .to_state()
+                .unwrap();
         }
         if random.next_f32() < self.high_chance {
             return self.high_states
                 [random.next_bounded_i32(self.high_states.len() as i32) as usize]
-                .to_block();
+                .to_state()
+                .unwrap();
         }
-        self.default_state.to_block()
+        self.default_state.to_state().unwrap()
     }
 }

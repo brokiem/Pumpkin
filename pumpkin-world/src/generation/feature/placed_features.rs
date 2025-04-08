@@ -145,8 +145,8 @@ impl PlacementModifier {
                 modifier.get_positions(chunk, feature, random, pos)
             }
             PlacementModifier::SurfaceRelativeThresholdFilter => None,
-            PlacementModifier::SurfaceWaterDepthFilter(modfier) => {
-                modfier.get_positions(chunk, feature, random, pos)
+            PlacementModifier::SurfaceWaterDepthFilter(modifier) => {
+                modifier.get_positions(chunk, feature, random, pos)
             }
             PlacementModifier::Biome(modifier) => {
                 modifier.get_positions(chunk, feature, random, pos)

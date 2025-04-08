@@ -67,15 +67,8 @@ impl BlockColumnFeature {
             }
             let layer = &self.layers[l];
             for _n in 0..m {
-                let block = layer.provider.get(random, mutable);
-                chunk.set_block_state(
-                    &mutable.0,
-                    crate::block::ChunkBlockState {
-                        state_id: block.default_state_id,
-                        block_id: block.id,
-                        air: false, // ?
-                    },
-                );
+                let state = layer.provider.get(random, mutable);
+                chunk.set_block_state(&mutable.0, state);
                 mutable = BlockPos(mutable.0.add(&self.direction.to_offset()));
             }
         }

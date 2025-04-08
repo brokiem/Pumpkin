@@ -1,4 +1,4 @@
-use pumpkin_data::block::Block;
+use pumpkin_data::block::{Block, BlockState};
 use pumpkin_util::math::position::BlockPos;
 use serde::Deserialize;
 
@@ -35,7 +35,7 @@ impl TrunkType {
         height: u32,
         start_pos: BlockPos,
         chunk: &mut ProtoChunk,
-        trunk_block: &Block,
+        trunk_block: &BlockState,
     ) {
         match self {
             Self::Straight => {
@@ -62,7 +62,7 @@ impl StraightTrunkPlacer {
         height: u32,
         start_pos: BlockPos,
         chunk: &mut ProtoChunk,
-        trunk_block: &Block,
+        trunk_block: &BlockState,
     ) {
         for i in 0..height {
             placer.place(
