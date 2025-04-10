@@ -56,7 +56,7 @@ use tokio::{
 use thiserror::Error;
 use tokio_util::task::TaskTracker;
 use uuid::Uuid;
-mod authentication;
+pub mod authentication;
 mod container;
 pub mod lan_broadcast;
 mod packet;
@@ -108,7 +108,7 @@ impl Default for PlayerConfig {
     fn default() -> Self {
         Self {
             locale: "en_us".to_string(),
-            view_distance: unsafe { NonZeroU8::new_unchecked(10) },
+            view_distance: NonZeroU8::new(10).unwrap(),
             chat_mode: ChatMode::Enabled,
             chat_colors: true,
             skin_parts: 0,
@@ -621,7 +621,7 @@ impl Client {
     pub async fn kick(&self, reason: TextComponent) {
         match self.connection_state.load() {
             ConnectionState::Login => {
-                // TextComponent implements Serialze and writes in bytes instead of String, thats the reasib we only use content
+                // TextComponent implements Serialize and writes in bytes instead of String, that's the reasib we only use content
                 self.send_packet_now(&CLoginDisconnect::new(
                     &serde_json::to_string(&reason.0).unwrap_or_else(|_| String::new()),
                 ))

@@ -17,9 +17,6 @@ RUN --mount=type=cache,sharing=private,target=/pumpkin/target \
 
 FROM alpine:3.21
 
-# Identifying information for registries like ghcr.io
-LABEL org.opencontainers.image.source=https://github.com/Pumpkin-MC/Pumpkin
-
 RUN apk add --no-cache libgcc
 
 COPY --from=builder /pumpkin/pumpkin.release /bin/pumpkin
@@ -32,3 +29,4 @@ WORKDIR /pumpkin
 ENV RUST_BACKTRACE=1
 EXPOSE 25565
 ENTRYPOINT [ "/bin/pumpkin" ]
+HEALTHCHECK CMD nc -z 127.0.0.1 25565 || exit 1
