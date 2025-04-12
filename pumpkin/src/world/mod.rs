@@ -1442,7 +1442,7 @@ impl World {
         flags: BlockFlags,
     ) {
         let block = self.get_block(position).await.unwrap();
-        let event = BlockBreakEvent::new(cause.clone(), block.clone(), 0, false);
+        let event = BlockBreakEvent::new(cause.clone(), block.clone(), *position, 0, false);
 
         let event = PLUGIN_MANAGER
             .lock()

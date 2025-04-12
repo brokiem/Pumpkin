@@ -4,15 +4,14 @@ use std::{
     hash::Hash,
 };
 
-use pumpkin_data::{
-    block::{Block, get_state_by_state_id},
-    chunk::Biome,
-};
+use pumpkin_data::{block::Block, chunk::Biome};
 use pumpkin_util::encompassing_bits;
 
-use crate::block::{BlockStateCodec, ChunkBlockState};
+use crate::block::{RawBlockState, registry::get_state_by_state_id};
 
-use super::format::{ChunkSectionBiomes, ChunkSectionBlockStates, PaletteBiomeEntry};
+use super::format::{
+    ChunkSectionBiomes, ChunkSectionBlockStates, PaletteBiomeEntry, PaletteBlockEntry,
+};
 
 /// 3d array indexed by y,z,x
 type AbstractCube<T, const DIM: usize> = [[[T; DIM]; DIM]; DIM];
@@ -399,7 +398,7 @@ impl BlockPalette {
             .palette
             .into_iter()
             .map(|entry| {
-                if let Some(block_state) = ChunkBlockState::from_palette(&entry) {
+                if let Some(block_state) = RawBlockState::from_palette(&entry) {
                     block_state.get_id()
                 } else {
                     log::warn!(
@@ -434,10 +433,10 @@ impl BlockPalette {
         }
     }
 
-    fn block_state_id_to_palette_entry(registry_id: u16) -> BlockStateCodec {
+    fn block_state_id_to_palette_entry(registry_id: u16) -> PaletteBlockEntry {
         let block = Block::from_state_id(registry_id).unwrap();
 
-        BlockStateCodec {
+        PaletteBlockEntry {
             name: block.name.into(),
             properties: {
                 if let Some(properties) = block.properties(registry_id) {
