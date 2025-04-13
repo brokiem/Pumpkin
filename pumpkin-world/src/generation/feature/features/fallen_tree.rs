@@ -6,7 +6,6 @@ use crate::{ProtoChunk, generation::block_state_provider::BlockStateProvider};
 #[derive(Deserialize)]
 pub struct FallenTreeFeature {
     trunk_provider: BlockStateProvider,
-    log_length: u8,
 }
 
 impl FallenTreeFeature {
@@ -19,9 +18,10 @@ impl FallenTreeFeature {
         random: &mut RandomGenerator,
         pos: BlockPos,
     ) -> bool {
+        false
     }
 
     fn gen_stump(&self, chunk: &mut ProtoChunk, random: &mut RandomGenerator, pos: BlockPos) {
-        chunk.set_block_state(&pos.0, self.trunk_provider.get(random, pos));
+        chunk.set_block_state(&pos.0, &self.trunk_provider.get(random, pos));
     }
 }

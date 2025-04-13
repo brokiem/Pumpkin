@@ -161,12 +161,11 @@ impl OffsetBlocksBlockPredicate {
     }
     pub fn get_block(&self, chunk: &ProtoChunk, pos: &BlockPos) -> Block {
         let pos = self.get(pos);
-        Block::from_id(chunk.get_block_state(&pos.0).block_id).unwrap()
+        chunk.get_block_state(&pos.0).to_block()
     }
     pub fn get_state(&self, chunk: &ProtoChunk, pos: &BlockPos) -> BlockState {
         let pos = self.get(pos);
-        let block = &Block::from_id(chunk.get_block_state(&pos.0).block_id).unwrap();
-        get_state_by_state_id(block.default_state_id).unwrap()
+        chunk.get_block_state(&pos.0).to_state()
     }
 }
 

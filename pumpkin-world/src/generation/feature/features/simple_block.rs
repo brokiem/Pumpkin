@@ -2,9 +2,7 @@ use pumpkin_data::block::get_block_by_state_id;
 use pumpkin_util::{math::position::BlockPos, random::RandomGenerator};
 use serde::Deserialize;
 
-use crate::{
-    ProtoChunk, block::ChunkBlockState, generation::block_state_provider::BlockStateProvider,
-};
+use crate::{ProtoChunk, generation::block_state_provider::BlockStateProvider};
 
 #[derive(Deserialize)]
 pub struct SimpleBlockFeature {
@@ -20,15 +18,8 @@ impl SimpleBlockFeature {
         pos: BlockPos,
     ) -> bool {
         let state = self.to_place.get(random, pos);
-        let block = get_block_by_state_id(state.id).unwrap();
         // TODO: check things..
-        chunk.set_block_state(
-            &pos.0,
-            ChunkBlockState {
-                state_id: state.id,
-                block_id: block.id,
-            },
-        );
+        chunk.set_block_state(&pos.0, &state);
         // TODO: schedule tick when needed
         true
     }

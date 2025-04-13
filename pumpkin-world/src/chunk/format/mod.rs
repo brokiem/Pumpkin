@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use pumpkin_data::{block::Block, chunk::ChunkStatus};
 use pumpkin_nbt::{from_bytes, nbt_long_array};
 

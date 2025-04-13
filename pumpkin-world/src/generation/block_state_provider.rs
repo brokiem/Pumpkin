@@ -97,7 +97,7 @@ impl DualNoiseBlockStateProvider {
         let value = self.base.base.get_noise(pos);
         self.base
             .get_state_by_value(&list, value)
-            .to_state()
+            .get_state()
             .unwrap()
     }
 
@@ -122,7 +122,7 @@ pub struct SimpleStateProvider {
 
 impl SimpleStateProvider {
     pub fn get(&self, _pos: BlockPos) -> BlockState {
-        self.state.to_state().unwrap()
+        self.state.get_state().unwrap()
     }
 }
 
@@ -165,7 +165,7 @@ impl NoiseBlockStateProvider {
     pub fn get(&self, pos: BlockPos) -> BlockState {
         let value = self.base.get_noise(pos);
         self.get_state_by_value(&self.states, value)
-            .to_state()
+            .get_state()
             .unwrap()
     }
 
@@ -191,15 +191,15 @@ impl NoiseThresholdBlockStateProvider {
         let value = self.base.get_noise(pos);
         if value < self.threshold as f64 {
             return self.low_states[random.next_bounded_i32(self.low_states.len() as i32) as usize]
-                .to_state()
+                .get_state()
                 .unwrap();
         }
         if random.next_f32() < self.high_chance {
             return self.high_states
                 [random.next_bounded_i32(self.high_states.len() as i32) as usize]
-                .to_state()
+                .get_state()
                 .unwrap();
         }
-        self.default_state.to_state().unwrap()
+        self.default_state.get_state().unwrap()
     }
 }

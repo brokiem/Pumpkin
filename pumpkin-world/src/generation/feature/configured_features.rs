@@ -38,8 +38,8 @@ use super::features::{
 
 pub static CONFIGURED_FEATURES: LazyLock<HashMap<String, ConfiguredFeature>> =
     LazyLock::new(|| {
-        serde_json::from_str(include_str!("../../../../assets/gen_features.json"))
-            .expect("Could not parse gen_features.json registry.")
+        serde_json::from_str(include_str!("../../../../assets/configured_features.json"))
+            .expect("Could not parse configured_features.json registry.")
     });
 
 // Yes this may look ugly and you wonder why this is hard coded, but its makes sense to hardcode since we have to add logic for these in code

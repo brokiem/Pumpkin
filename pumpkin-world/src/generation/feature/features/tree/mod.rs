@@ -39,16 +39,15 @@ impl TreeFeature {
     }
 
     pub fn can_replace_or_log(chunk: &ProtoChunk, pos: &BlockPos) -> bool {
-        let state = chunk.get_block_state(&pos.0);
-        let block = get_block_by_id(state.block_id).unwrap();
+        let block = chunk.get_block_state(&pos.0).to_block();
 
         Self::can_replace(chunk, pos) || block.is_tagged_with("minecraft:logs").unwrap()
     }
 
     pub fn can_replace(chunk: &ProtoChunk, pos: &BlockPos) -> bool {
         let state = chunk.get_block_state(&pos.0);
-        let block = get_block_by_id(state.block_id).unwrap();
-        let state = get_state_by_state_id(state.state_id).unwrap();
+        let block = state.to_block();
+        let state = state.to_state();
 
         state.air
             || block
@@ -83,8 +82,7 @@ impl TreeFeature {
             for x in -j..=j {
                 for z in -j..=j {
                     pos = BlockPos(init_pos.0.add_raw(x, y as i32, z));
-                    let state = chunk.get_block_state(&pos.0);
-                    let block = get_block_by_id(state.block_id).unwrap();
+                    let block = chunk.get_block_state(&pos.0).to_block();
                     if Self::can_replace_or_log(chunk, &pos)
                         && (self.ignore_vines || block != Block::VINE)
                     {
