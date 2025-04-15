@@ -27,6 +27,7 @@ use crate::{
     },
     generation::{Seed, WorldGenerator, get_world_gen},
     lock::{LevelLocker, anvil::AnvilLevelLocker},
+    world::SimpleWorld,
     world_info::{
         LevelData, WorldInfoError, WorldInfoReader, WorldInfoWriter,
         anvil::{AnvilLevelInfo, LEVEL_DAT_BACKUP_FILE_NAME, LEVEL_DAT_FILE_NAME},
@@ -621,12 +622,13 @@ impl Level {
         fluid_ticks.iter().any(|tick| tick.block_pos == *block_pos)
     }
 
-    pub async fn tick_block_entities(&self) {
+    pub async fn tick_block_entities(&self, world: Arc<dyn SimpleWorld>) {
         for chunk in self.loaded_chunks.iter() {
-            let mut chunk = chunk.read().await;
+            let chunk = chunk.read().await;
             let cloned_entities = chunk.block_entities.clone();
+            drop(chunk);
             for block_entity in &cloned_entities {
-                //lock_entity.1.tick().await;
+                block_entity.1.tick(&world).await;
             }
         }
     }

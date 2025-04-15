@@ -3,8 +3,8 @@ use std::sync::Arc;
 use crate::entity::player::Player;
 use async_trait::async_trait;
 use pumpkin_data::block::{
-    Block, BlockProperties, BlockState, Boolean, MovingPistonLikeProperties, PistonType,
-    get_state_by_state_id,
+    Block, BlockProperties, BlockState, Boolean, EnumVariants, MovingPistonLikeProperties,
+    PistonHeadLikeProperties, PistonType, get_state_by_state_id,
 };
 use pumpkin_protocol::server::play::SUseItemOn;
 use pumpkin_util::math::position::BlockPos;
@@ -168,13 +168,14 @@ async fn move_piston(
             .await;
     }
     if extend {
-        let mut props = MovingPistonLikeProperties::default(&Block::MOVING_PISTON);
-        props.facing = dir.to_facing();
-        props.r#type = if sticky {
+        let pistion_type = if sticky {
             PistonType::Sticky
         } else {
             PistonType::Normal
         };
+        let mut props = MovingPistonLikeProperties::default(&Block::MOVING_PISTON);
+        props.facing = dir.to_facing();
+        props.r#type = pistion_type;
         world
             .set_block_state(
                 &extended_pos,
@@ -182,7 +183,21 @@ async fn move_piston(
                 BlockFlags::MOVED,
             )
             .await;
-        //world.add_block_entity(PistonBlockEntity).await;
+        let mut props = PistonHeadLikeProperties::default(&Block::PISTON_HEAD);
+        props.facing = dir.to_facing();
+        props.r#type = pistion_type;
+        world
+            .add_block_entity(Arc::new(PistonBlockEntity {
+                position: extended_pos,
+                facing: dir.to_facing().to_index() as i8,
+                pushed_block_state: get_state_by_state_id(props.to_state_id(&Block::PISTON_HEAD))
+                    .unwrap(),
+                current_progress: 0.0.into(),
+                last_progress: 0.0.into(),
+                extending: true,
+                source: true,
+            }))
+            .await;
     }
     true
 }

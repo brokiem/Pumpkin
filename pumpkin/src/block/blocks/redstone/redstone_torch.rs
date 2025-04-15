@@ -17,8 +17,8 @@ type RTorchProps = pumpkin_data::block::RedstoneOreLikeProperties;
 
 use crate::block::pumpkin_block::{BlockMetadata, PumpkinBlock};
 use crate::server::Server;
-use pumpkin_world::world::BlockFlags;
 use crate::world::World;
+use pumpkin_world::world::BlockFlags;
 
 use super::is_emitting_redstone_power;
 

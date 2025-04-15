@@ -24,7 +24,7 @@ pub trait BlockEntity: Send + Sync {
         Self: Sized;
     fn identifier(&self) -> &'static str;
     fn get_position(&self) -> BlockPos;
-    async fn tick(&self, world: Arc<dyn SimpleWorld>) {}
+    async fn tick(&self, _world: &Arc<dyn SimpleWorld>) {}
     fn write_internal(&self, nbt: &mut NbtCompound) {
         nbt.put_string("id", self.identifier().to_string());
         let position = self.get_position();

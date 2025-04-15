@@ -21,7 +21,6 @@ use crate::{
     server::Server,
 };
 use async_trait::async_trait;
-use bitflags::bitflags;
 use border::Worldborder;
 use bytes::Bytes;
 use explosion::Explosion;
@@ -67,7 +66,6 @@ use pumpkin_world::{block::BlockDirection, chunk::ChunkData};
 use pumpkin_world::{chunk::TickPriority, level::Level};
 use rand::{Rng, thread_rng};
 use scoreboard::Scoreboard;
-use thiserror::Error;
 use time::LevelTime;
 use tokio::sync::{RwLock, mpsc};
 use tokio::{
@@ -385,7 +383,7 @@ impl World {
             }
         }
         // tick block entities
-        self.level.tick_block_entities();
+        self.level.tick_block_entities(self.clone()).await;
     }
 
     pub async fn flush_block_updates(&self) {
@@ -1651,9 +1649,13 @@ impl World {
     }
 
     pub async fn remove_block_entity(&self, block_pos: &BlockPos) {
+        dbg!("0");
         let chunk = self.get_chunk(block_pos).await;
+        dbg!("1");
         let mut chunk: tokio::sync::RwLockWriteGuard<ChunkData> = chunk.write().await;
+        dbg!("2");
         chunk.block_entities.remove(block_pos);
+        dbg!("3");
         chunk.dirty = true;
     }
 }
@@ -1667,6 +1669,17 @@ impl pumpkin_world::world::SimpleWorld for World {
         flags: BlockFlags,
     ) -> BlockStateId {
         World::set_block_state(&self, position, block_state_id, flags).await
+    }
+
+    async fn get_block(
+        &self,
+        position: &BlockPos,
+    ) -> Result<pumpkin_data::block::Block, GetBlockError> {
+        self.get_block(position).await
+    }
+
+    async fn update_neighbor(self: Arc<Self>, neighbor_block_pos: &BlockPos, source_block: &Block) {
+        World::update_neighbor(&self, neighbor_block_pos, source_block).await
     }
 
     async fn remove_block_entity(&self, block_pos: &BlockPos) {
