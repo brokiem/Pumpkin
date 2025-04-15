@@ -58,7 +58,7 @@ use pumpkin_util::math::{position::chunk_section_from_pos, vector2::Vector2};
 use pumpkin_util::text::{TextComponent, color::NamedColor};
 use pumpkin_world::{
     BlockStateId, GENERATION_SETTINGS, GeneratorSetting, biome, block::entities::BlockEntity,
-    level::SyncChunk,
+    level::SyncChunk, world::GetBlockError,
 };
 use pumpkin_world::{block::BlockDirection, chunk::ChunkData};
 use pumpkin_world::{chunk::TickPriority, level::Level};
@@ -79,33 +79,6 @@ pub mod scoreboard;
 pub mod weather;
 
 use weather::Weather;
-
-bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct BlockFlags: u32 {
-        const NOTIFY_NEIGHBORS                      = 0b000_0000_0001;
-        const NOTIFY_LISTENERS                      = 0b000_0000_0010;
-        const NOTIFY_ALL                            = 0b000_0000_0011;
-        const FORCE_STATE                           = 0b000_0000_0100;
-        const SKIP_DROPS                            = 0b000_0000_1000;
-        const MOVED                                 = 0b000_0001_0000;
-        const SKIP_REDSTONE_WIRE_STATE_REPLACEMENT  = 0b000_0010_0000;
-        const SKIP_BLOCK_ENTITY_REPLACED_CALLBACK   = 0b000_0100_0000;
-        const SKIP_BLOCK_ADDED_CALLBACK             = 0b000_1000_0000;
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum GetBlockError {
-    InvalidBlockId,
-    BlockOutOfWorldBounds,
-}
-
-impl std::fmt::Display for GetBlockError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
 
 impl PumpkinError for GetBlockError {
     fn is_kick(&self) -> bool {
@@ -408,6 +381,8 @@ impl World {
                 entity.on_player_collision(player).await;
             }
         }
+        // tick block entities
+        self.level.tick_block_entities();
     }
 
     pub async fn flush_block_updates(&self) {
@@ -1532,13 +1507,6 @@ impl World {
         get_state_by_state_id(id).ok_or(GetBlockError::InvalidBlockId)
     }
 
-    pub fn get_state_by_id(
-        &self,
-        id: u16,
-    ) -> Result<pumpkin_data::block::BlockState, GetBlockError> {
-        get_state_by_state_id(id).ok_or(GetBlockError::InvalidBlockId)
-    }
-
     /// Gets the Block + Block state from the Block Registry, Returns None if the Block state has not been found
     pub async fn get_block_and_block_state(
         &self,
@@ -1686,3 +1654,5 @@ impl World {
         chunk.dirty = true;
     }
 }
+
+impl pumpkin_world::world::World for World {}

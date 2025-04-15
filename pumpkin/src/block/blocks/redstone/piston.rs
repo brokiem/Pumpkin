@@ -2,10 +2,16 @@ use std::sync::Arc;
 
 use crate::entity::player::Player;
 use async_trait::async_trait;
-use pumpkin_data::block::{Block, BlockProperties, Boolean};
+use pumpkin_data::block::{
+    Block, BlockProperties, BlockState, Boolean, MovingPistonLikeProperties, PistonType,
+    get_state_by_state_id,
+};
 use pumpkin_protocol::server::play::SUseItemOn;
 use pumpkin_util::math::position::BlockPos;
-use pumpkin_world::{BlockStateId, block::BlockDirection};
+use pumpkin_world::{
+    BlockStateId,
+    block::{BlockDirection, FacingExt, entities::piston::PistonBlockEntity},
+};
 
 use crate::{
     block::pumpkin_block::{BlockMetadata, PumpkinBlock},
@@ -13,7 +19,7 @@ use crate::{
     world::{BlockFlags, World},
 };
 
-use super::block_receives_redstone_power;
+use super::is_emitting_redstone_power;
 
 type PistonProps = pumpkin_data::block::StickyPistonLikeProperties;
 
@@ -75,19 +81,107 @@ impl PumpkinBlock for PistonBlock {
     }
 }
 
+async fn should_extend(
+    world: &Arc<World>,
+    block: &Block,
+    state: &BlockState,
+    block_pos: &BlockPos,
+    piston_dir: BlockDirection,
+) -> bool {
+    // Pistons can't be powered from the same direction as they are facing
+    for dir in BlockDirection::all() {
+        if dir == piston_dir
+            || !is_emitting_redstone_power(
+                block,
+                &state,
+                world,
+                &block_pos.offset(dir.to_offset()),
+                &dir,
+            )
+            .await
+        {
+            continue;
+        }
+        return true;
+    }
+    if is_emitting_redstone_power(block, &state, world, block_pos, &BlockDirection::Down).await {
+        return true;
+    }
+    for dir in BlockDirection::all() {
+        if dir == BlockDirection::Down
+            || !is_emitting_redstone_power(
+                block,
+                &state,
+                world,
+                &block_pos.up().offset(dir.to_offset()),
+                &dir,
+            )
+            .await
+        {
+            continue;
+        }
+        return true;
+    }
+    false
+}
+
 async fn try_move(world: &Arc<World>, block: &Block, block_pos: &BlockPos) {
     let state = world.get_block_state(block_pos).await.unwrap();
     let mut props = PistonProps::from_state_id(state.id, block);
-    let is_receiving_power = block_receives_redstone_power(world, block_pos).await;
+    // I don't think this is optimal ?
+    let sticky = block == &Block::STICKY_PISTON;
+    let dir = props.facing.to_block_direction();
+    let should_extent = should_extend(world, block, &state, block_pos, dir).await;
+    dbg!(should_extent);
 
-    if is_receiving_power {
-        props.extended = props.extended.flip();
+    if should_extent && !props.extended.to_bool() {
+        if !move_piston(world, dir, block_pos, true, sticky).await {
+            return;
+        }
+        props.extended = Boolean::True;
         world
             .set_block_state(
                 block_pos,
                 props.to_state_id(block),
-                BlockFlags::NOTIFY_LISTENERS,
+                BlockFlags::NOTIFY_ALL | BlockFlags::MOVED,
             )
             .await;
     }
+}
+
+async fn move_piston(
+    world: &Arc<World>,
+    dir: BlockDirection,
+    block_pos: &BlockPos,
+    extend: bool,
+    sticky: bool,
+) -> bool {
+    let extended_pos = block_pos.offset(dir.to_offset());
+    if !extend && world.get_block(&extended_pos).await.unwrap() == Block::PISTON_HEAD {
+        world
+            .set_block_state(
+                &extended_pos,
+                Block::AIR.default_state_id,
+                BlockFlags::FORCE_STATE,
+            )
+            .await;
+    }
+    if extend {
+        let mut props = MovingPistonLikeProperties::default(&Block::MOVING_PISTON);
+        props.facing = dir.to_facing();
+        props.r#type = if sticky {
+            PistonType::Sticky
+        } else {
+            PistonType::Normal
+        };
+        world
+            .set_block_state(
+                &extended_pos,
+                props.to_state_id(&Block::MOVING_PISTON),
+                BlockFlags::MOVED,
+            )
+            .await;
+        world.add_block_entity(PistonBlockEntity).await;
+    }
+    true
 }

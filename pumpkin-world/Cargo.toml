@@ -13,6 +13,8 @@ pumpkin-data = { path = "../pumpkin-data" }
 async-trait.workspace = true
 futures.workspace = true
 
+bitflags = "2.9.0"
+
 bytes.workspace = true
 
 tokio.workspace = true

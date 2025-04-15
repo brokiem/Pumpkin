@@ -1,5 +1,6 @@
 use std::{
     fs,
+    ops::Deref,
     path::PathBuf,
     sync::{
         Arc,
@@ -618,6 +619,16 @@ impl Level {
     pub async fn is_fluid_tick_scheduled(&self, block_pos: &BlockPos) -> bool {
         let fluid_ticks = self.fluid_ticks.lock().await;
         fluid_ticks.iter().any(|tick| tick.block_pos == *block_pos)
+    }
+
+    pub async fn tick_block_entities(&self) {
+        for chunk in self.loaded_chunks.iter() {
+            let mut chunk = chunk.read().await;
+            let cloned_entities = chunk.block_entities.clone();
+            for block_entity in &cloned_entities {
+                block_entity.1.tick().await;
+            }
+        }
     }
 
     pub async fn schedule_block_tick(
