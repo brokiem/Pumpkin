@@ -1,6 +1,5 @@
 use std::{
     fs,
-    ops::Deref,
     path::PathBuf,
     sync::{
         Arc,

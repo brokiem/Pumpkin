@@ -85,6 +85,17 @@ pub trait PumpkinBlock: Send + Sync {
     ) {
     }
 
+    async fn on_synced_block_event(
+        &self,
+        _block: &Block,
+        _world: &Arc<World>,
+        _pos: &BlockPos,
+        _type: u8,
+        _data: u8,
+    ) -> bool {
+        false
+    }
+
     async fn player_placed(
         &self,
         _world: &Arc<World>,

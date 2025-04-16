@@ -9,7 +9,7 @@ pub mod time;
 
 use crate::{
     PLUGIN_MANAGER,
-    block::{self, registry::BlockRegistry},
+    block::{self, BlockEvent, registry::BlockRegistry},
     command::client_suggestions,
     entity::{Entity, EntityBase, EntityId, player::Player},
     error::PumpkinError,
@@ -38,9 +38,9 @@ use pumpkin_nbt::to_bytes_unnamed;
 use pumpkin_protocol::{
     ClientPacket, IdOr, SoundEvent,
     client::play::{
-        CBlockEntityData, CEntityStatus, CGameEvent, CLogin, CMultiBlockUpdate, CPlayerChatMessage,
-        CPlayerInfoUpdate, CRemoveEntities, CRemovePlayerInfo, CSoundEffect, CSpawnEntity,
-        FilterType, GameEvent, InitChat, PlayerAction, PlayerInfoFlags,
+        CBlockEntityData, CBlockEvent, CEntityStatus, CGameEvent, CLogin, CMultiBlockUpdate,
+        CPlayerChatMessage, CPlayerInfoUpdate, CRemoveEntities, CRemovePlayerInfo, CSoundEffect,
+        CSpawnEntity, FilterType, GameEvent, InitChat, PlayerAction, PlayerInfoFlags,
     },
     server::play::SChatMessage,
 };
@@ -125,6 +125,7 @@ pub struct World {
     pub weather: Mutex<Weather>,
     /// Block Behaviour
     pub block_registry: Arc<BlockRegistry>,
+    synced_block_event_queue: Mutex<Vec<BlockEvent>>,
     /// A map of unsent block changes, keyed by block position.
     unsent_block_changes: Mutex<HashMap<BlockPos, u16>>,
     // TODO: entities
@@ -152,6 +153,7 @@ impl World {
             weather: Mutex::new(Weather::new()),
             block_registry,
             sea_level: generation_settings.sea_level,
+            synced_block_event_queue: Mutex::new(Vec::new()),
             unsent_block_changes: Mutex::new(HashMap::new()),
         }
     }
@@ -335,6 +337,7 @@ impl World {
 
     pub async fn tick(self: &Arc<Self>, server: &Server) {
         self.flush_block_updates().await;
+        self.flush_synced_block_events().await;
 
         // world ticks
         {
@@ -1579,6 +1582,32 @@ impl World {
         }
     }
 
+    pub async fn add_synced_block_event(self: &Arc<Self>, pos: BlockPos, r#type: u8, data: u8) {
+        let mut queue = self.synced_block_event_queue.lock().await;
+        queue.push(BlockEvent { pos, r#type, data });
+    }
+
+    async fn flush_synced_block_events(self: &Arc<Self>) {
+        let mut queue = self.synced_block_event_queue.lock().await;
+        for event in queue.drain(..) {
+            let block = self.get_block(&event.pos).await.unwrap(); // TODO
+            if !self
+                .block_registry
+                .on_synced_block_event(&block, self, &event.pos, event.r#type, event.data)
+                .await
+            {
+                continue;
+            }
+            self.broadcast_packet_all(&CBlockEvent::new(
+                event.pos,
+                event.r#type,
+                event.data,
+                VarInt(block.id as i32),
+            ))
+            .await
+        }
+    }
+
     pub async fn replace_with_state_for_neighbor_update(
         self: &Arc<Self>,
         block_pos: &BlockPos,
@@ -1649,13 +1678,9 @@ impl World {
     }
 
     pub async fn remove_block_entity(&self, block_pos: &BlockPos) {
-        dbg!("0");
         let chunk = self.get_chunk(block_pos).await;
-        dbg!("1");
         let mut chunk: tokio::sync::RwLockWriteGuard<ChunkData> = chunk.write().await;
-        dbg!("2");
         chunk.block_entities.remove(block_pos);
-        dbg!("3");
         chunk.dirty = true;
     }
 }
@@ -1679,7 +1704,15 @@ impl pumpkin_world::world::SimpleWorld for World {
     }
 
     async fn update_neighbor(self: Arc<Self>, neighbor_block_pos: &BlockPos, source_block: &Block) {
-        World::update_neighbor(&self, neighbor_block_pos, source_block).await
+        Self::update_neighbor(&self, neighbor_block_pos, source_block).await
+    }
+
+    async fn update_neighbors(
+        self: Arc<Self>,
+        block_pos: &BlockPos,
+        except: Option<&BlockDirection>,
+    ) {
+        Self::update_neighbors(&self, block_pos, except).await
     }
 
     async fn remove_block_entity(&self, block_pos: &BlockPos) {

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::block::BlockDirection;
 use async_trait::async_trait;
 use bitflags::bitflags;
 use pumpkin_data::block::Block;
@@ -50,6 +51,12 @@ pub trait SimpleWorld: Send + Sync {
     ) -> Result<pumpkin_data::block::Block, GetBlockError>;
 
     async fn update_neighbor(self: Arc<Self>, neighbor_block_pos: &BlockPos, source_block: &Block);
+
+    async fn update_neighbors(
+        self: Arc<Self>,
+        block_pos: &BlockPos,
+        except: Option<&BlockDirection>,
+    );
 
     async fn remove_block_entity(&self, block_pos: &BlockPos);
 }

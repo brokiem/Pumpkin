@@ -42,14 +42,10 @@ impl BlockEntity for PistonBlockEntity {
         let mut last_progress = self.last_progress.lock().await;
         let mut current_progress = self.current_progress.lock().await;
         *last_progress = *current_progress;
-        dbg!("ff");
         if *last_progress >= 1.0 {
-            dbg!("fjfijf");
             let pos = self.position;
             world.remove_block_entity(&pos).await;
-            dbg!(world.get_block(&pos).await.unwrap().name);
             if world.get_block(&pos).await.unwrap() == Block::MOVING_PISTON {
-                dbg!("aa");
                 if self.pushed_block_state.air {
                     world
                         .clone()
@@ -74,7 +70,7 @@ impl BlockEntity for PistonBlockEntity {
                 }
             }
         }
-        *current_progress = *current_progress + 0.5;
+        *current_progress += 0.5;
         if *current_progress >= 1.0 {
             *current_progress = 1.0;
         }
