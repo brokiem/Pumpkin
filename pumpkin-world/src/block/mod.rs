@@ -55,6 +55,17 @@ impl BlockDirection {
         }
         .into()
     }
+
+    pub fn to_index(&self) -> u8 {
+        match self {
+            BlockDirection::Down => 0,
+            BlockDirection::Up => 1,
+            BlockDirection::North => 2,
+            BlockDirection::South => 3,
+            BlockDirection::West => 4,
+            BlockDirection::East => 5,
+        }
+    }
     pub fn opposite(&self) -> BlockDirection {
         match self {
             BlockDirection::Down => BlockDirection::Up,

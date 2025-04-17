@@ -196,7 +196,6 @@ async fn should_extend(
 async fn try_move(world: &Arc<World>, block: &Block, block_pos: &BlockPos) {
     let state = world.get_block_state(block_pos).await.unwrap();
     let props = PistonProps::from_state_id(state.id, block);
-    // I don't think this is optimal ?
     let dir = props.facing.to_block_direction();
     let should_extent = should_extend(world, block, &state, block_pos, dir).await;
 
@@ -206,7 +205,7 @@ async fn try_move(world: &Arc<World>, block: &Block, block_pos: &BlockPos) {
             .await
         {
             world
-                .add_synced_block_event(*block_pos, 0, props.facing.to_index() as u8)
+                .add_synced_block_event(*block_pos, 0, dir.to_index() as u8)
                 .await;
         }
     } else if !should_extent && props.extended.to_bool() {
@@ -221,7 +220,7 @@ async fn try_move(world: &Arc<World>, block: &Block, block_pos: &BlockPos) {
             }
         }
         world
-            .add_synced_block_event(*block_pos, r#type, props.facing.to_index() as u8)
+            .add_synced_block_event(*block_pos, r#type, dir.to_index() as u8)
             .await;
     }
 }
@@ -292,7 +291,7 @@ async fn move_piston(
             world
                 .add_block_entity(Arc::new(PistonBlockEntity {
                     position: extended_pos,
-                    facing: dir.to_facing().to_index() as i8,
+                    facing: dir.to_facing().to_block_direction().to_index() as i8,
                     pushed_block_state: moved_state.clone(),
                     current_progress: 0.0.into(),
                     last_progress: 0.0.into(),
@@ -327,7 +326,7 @@ async fn move_piston(
         world
             .add_block_entity(Arc::new(PistonBlockEntity {
                 position: extended_pos,
-                facing: dir.to_facing().to_index() as i8,
+                facing: dir.to_facing().to_block_direction().to_index() as i8,
                 pushed_block_state: get_state_by_state_id(props.to_state_id(&Block::PISTON_HEAD))
                     .unwrap(),
                 current_progress: 0.0.into(),
