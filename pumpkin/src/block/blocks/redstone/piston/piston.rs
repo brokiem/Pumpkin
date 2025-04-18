@@ -13,7 +13,10 @@ use pumpkin_protocol::server::play::SUseItemOn;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::{
     BlockStateId,
-    block::{BlockDirection, FacingExt, entities::piston::PistonBlockEntity},
+    block::{
+        BlockDirection, FacingExt,
+        entities::{BlockEntity, piston::PistonBlockEntity},
+    },
     world::BlockFlags,
 };
 
@@ -144,6 +147,46 @@ impl PumpkinBlock for PistonBlock {
                 )
                 .await;
             return true;
+        } else {
+            let extended_pos = pos.offset(dir.to_offset());
+
+            if let Some((block_entity_nbt, _block_entity)) =
+                world.get_block_entity(&extended_pos).await
+            {
+                PistonBlockEntity::from_nbt(&block_entity_nbt, extended_pos)
+                    .finish(world.clone())
+                    .await;
+            }
+
+            let mut props = MovingPistonLikeProperties::default(&Block::MOVING_PISTON);
+            props.facing = dir.to_facing();
+            let state = props.to_state_id(&Block::MOVING_PISTON);
+
+            world
+                .set_block_state(&pos, state, BlockFlags::FORCE_STATE)
+                .await;
+
+            world
+                .add_block_entity(Arc::new(PistonBlockEntity {
+                    position: *pos,
+                    facing: dir.to_facing().to_block_direction(),
+                    pushed_block_state: get_state_by_state_id(state).unwrap(),
+                    current_progress: 0.0.into(),
+                    last_progress: 0.0.into(),
+                    extending: false,
+                    source: true,
+                }))
+                .await;
+            if sticky {
+            } else {
+                world
+                    .set_block_state(
+                        &extended_pos,
+                        Block::AIR.default_state_id,
+                        BlockFlags::NOTIFY_ALL,
+                    )
+                    .await;
+            }
         }
         return true;
     }
@@ -291,7 +334,7 @@ async fn move_piston(
             world
                 .add_block_entity(Arc::new(PistonBlockEntity {
                     position: extended_pos,
-                    facing: dir.to_facing().to_block_direction().to_index() as i8,
+                    facing: dir.to_facing().to_block_direction(),
                     pushed_block_state: moved_state.clone(),
                     current_progress: 0.0.into(),
                     last_progress: 0.0.into(),
@@ -326,7 +369,7 @@ async fn move_piston(
         world
             .add_block_entity(Arc::new(PistonBlockEntity {
                 position: extended_pos,
-                facing: dir.to_facing().to_block_direction().to_index() as i8,
+                facing: dir.to_facing().to_block_direction(),
                 pushed_block_state: get_state_by_state_id(props.to_state_id(&Block::PISTON_HEAD))
                     .unwrap(),
                 current_progress: 0.0.into(),

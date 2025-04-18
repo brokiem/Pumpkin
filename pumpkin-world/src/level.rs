@@ -627,7 +627,7 @@ impl Level {
             let cloned_entities = chunk.block_entities.clone();
             drop(chunk);
             for block_entity in &cloned_entities {
-                block_entity.1.tick(&world).await;
+                block_entity.1.1.tick(&world).await;
             }
         }
     }

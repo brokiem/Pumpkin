@@ -34,7 +34,7 @@ use pumpkin_data::{
     world::{RAW, WorldEvent},
 };
 use pumpkin_macros::send_cancellable;
-use pumpkin_nbt::to_bytes_unnamed;
+use pumpkin_nbt::{compound::NbtCompound, to_bytes_unnamed};
 use pumpkin_protocol::{
     ClientPacket, IdOr, SoundEvent,
     client::play::{
@@ -1652,7 +1652,10 @@ impl World {
         }
     }
 
-    pub async fn get_block_entity(&self, block_pos: &BlockPos) -> Option<Arc<dyn BlockEntity>> {
+    pub async fn get_block_entity(
+        &self,
+        block_pos: &BlockPos,
+    ) -> Option<(NbtCompound, Arc<dyn BlockEntity>)> {
         let chunk = self.get_chunk(block_pos).await;
         let chunk: tokio::sync::RwLockReadGuard<ChunkData> = chunk.read().await;
 
@@ -1665,9 +1668,10 @@ impl World {
         let mut chunk: tokio::sync::RwLockWriteGuard<ChunkData> = chunk.write().await;
         let block_entity_nbt = block_entity.chunk_data_nbt();
 
-        if let Some(nbt) = block_entity_nbt {
+        if let Some(nbt) = &block_entity_nbt {
+            dbg!(nbt);
             let mut bytes = Vec::new();
-            to_bytes_unnamed(&nbt, &mut bytes).unwrap();
+            to_bytes_unnamed(nbt, &mut bytes).unwrap();
             self.broadcast_packet_all(&CBlockEntityData::new(
                 block_entity.get_position(),
                 VarInt(block_entity.get_id() as i32),
@@ -1676,7 +1680,10 @@ impl World {
             .await;
         }
 
-        chunk.block_entities.insert(block_pos, block_entity);
+        chunk.block_entities.insert(
+            block_pos,
+            (block_entity_nbt.unwrap_or(NbtCompound::new()), block_entity),
+        );
         chunk.dirty = true;
     }
 

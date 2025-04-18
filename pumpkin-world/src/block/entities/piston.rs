@@ -1,26 +1,53 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use crossbeam::atomic::AtomicCell;
+use num_traits::FromPrimitive;
 use pumpkin_data::block::{Block, BlockState, get_block_by_state_id, get_state_by_state_id};
+use pumpkin_nbt::{compound::NbtCompound, to_bytes_unnamed};
 use pumpkin_util::math::position::BlockPos;
 use tokio::sync::Mutex;
 
-use crate::world::{BlockFlags, SimpleWorld};
+use crate::{
+    block::BlockDirection,
+    world::{BlockFlags, SimpleWorld},
+};
 
 use super::BlockEntity;
 
 pub struct PistonBlockEntity {
     pub position: BlockPos,
     pub pushed_block_state: BlockState,
-    pub facing: i8,
-    pub current_progress: Mutex<f32>,
-    pub last_progress: Mutex<f32>,
+    pub facing: BlockDirection,
+    pub current_progress: AtomicCell<f32>,
+    pub last_progress: AtomicCell<f32>,
     pub extending: bool,
     pub source: bool,
 }
 
 impl PistonBlockEntity {
-    pub const ID: &'static str = "minecraft:moving_piston";
+    pub const ID: &'static str = "minecraft:piston";
+
+    pub async fn finish(&self, world: Arc<dyn SimpleWorld>) {
+        if self.last_progress.load() < 1.0 {
+            let pos = self.position;
+            world.remove_block_entity(&pos).await;
+            if world.get_block(&pos).await.unwrap() == Block::MOVING_PISTON {
+                let state = if self.source {
+                    Block::AIR.default_state_id
+                } else {
+                    self.pushed_block_state.id
+                };
+                world
+                    .clone()
+                    .set_block_state(&pos, state, BlockFlags::NOTIFY_ALL)
+                    .await;
+                world
+                    .update_neighbor(&pos, &get_block_by_state_id(state).unwrap())
+                    .await;
+            }
+        }
+    }
 }
 
 const FACING: &str = "facing";
@@ -39,10 +66,9 @@ impl BlockEntity for PistonBlockEntity {
     }
 
     async fn tick(&self, world: &Arc<dyn SimpleWorld>) {
-        let mut last_progress = self.last_progress.lock().await;
-        let mut current_progress = self.current_progress.lock().await;
-        *last_progress = *current_progress;
-        if *last_progress >= 1.0 {
+        let current_progress = self.current_progress.load();
+        self.last_progress.store(current_progress);
+        if current_progress >= 1.0 {
             let pos = self.position;
             world.remove_block_entity(&pos).await;
             if world.get_block(&pos).await.unwrap() == Block::MOVING_PISTON {
@@ -70,9 +96,9 @@ impl BlockEntity for PistonBlockEntity {
                 }
             }
         }
-        *current_progress += 0.5;
-        if *current_progress >= 1.0 {
-            *current_progress = 1.0;
+        self.current_progress.store(current_progress + 0.5);
+        if current_progress + 0.5 >= 1.0 {
+            self.current_progress.store(1.0);
         }
     }
 
@@ -89,7 +115,7 @@ impl BlockEntity for PistonBlockEntity {
         Self {
             pushed_block_state,
             position,
-            facing,
+            facing: BlockDirection::from_index(facing as u8).unwrap_or(BlockDirection::Down),
             current_progress: last_progress.into(),
             last_progress: last_progress.into(),
             extending,
@@ -99,9 +125,15 @@ impl BlockEntity for PistonBlockEntity {
 
     fn write_nbt(&self, nbt: &mut pumpkin_nbt::compound::NbtCompound) {
         // TODO: pushed_block_state
-        nbt.put_byte(FACING, self.facing);
-        // nbt.put_float(LAST_PROGRESS, *self.last_progress.lock().await);
+        nbt.put_byte(FACING, self.facing.to_index() as i8);
+        nbt.put_float(LAST_PROGRESS, self.last_progress.load());
         nbt.put_bool(EXTENDING, self.extending);
         nbt.put_bool(SOURCE, self.source);
+    }
+
+    fn chunk_data_nbt(&self) -> Option<NbtCompound> {
+        let mut nbt = NbtCompound::new();
+        self.write_nbt(&mut nbt);
+        Some(nbt)
     }
 }
