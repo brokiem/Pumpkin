@@ -2,12 +2,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{block::blocks::redstone::is_emitting_redstone_power, entity::player::Player};
 use async_trait::async_trait;
-use pumpkin_data::{
-    block::{
-        Block, BlockProperties, BlockState, Boolean, EnumVariants, MovingPistonLikeProperties,
-        PistonHeadLikeProperties, PistonType, get_state_by_state_id,
-    },
-    game_event::GameEvent,
+use pumpkin_data::block::{
+    Block, BlockProperties, BlockState, Boolean, MovingPistonLikeProperties,
+    PistonHeadLikeProperties, PistonType, get_block_by_state_id, get_state_by_state_id,
 };
 use pumpkin_protocol::server::play::SUseItemOn;
 use pumpkin_util::math::position::BlockPos;
@@ -160,6 +157,12 @@ impl PumpkinBlock for PistonBlock {
 
             let mut props = MovingPistonLikeProperties::default(&Block::MOVING_PISTON);
             props.facing = dir.to_facing();
+            props.r#type = if sticky {
+                PistonType::Sticky
+            } else {
+                PistonType::Normal
+            };
+
             let state = props.to_state_id(&Block::MOVING_PISTON);
 
             world
@@ -177,6 +180,7 @@ impl PumpkinBlock for PistonBlock {
                     source: true,
                 }))
                 .await;
+            world.update_neighbors(pos, None).await;
             if sticky {
             } else {
                 world
@@ -378,7 +382,6 @@ async fn move_piston(
                 source: true,
             }))
             .await;
-        // world.update_neighbors(&extended_pos, None).await;
     }
 
     let air_state = Block::AIR.default_state_id;
@@ -392,10 +395,62 @@ async fn move_piston(
             .await;
     }
 
-    // for (&pos, &state) in moved_blocks_map.iter() {
-    //     state.prepare(world, pos, BlockFlags::NOTIFY_LISTENERS);
-    //     air_state.update_neighbors(world, pos, Block::NOTIFY_LISTENERS);
-    //     air_state.prepare(world, pos, Block::NOTIFY_LISTENERS);
-    // }
+    for (pos, state) in moved_blocks_map.iter() {
+        // state.prepare(world, pos, BlockFlags::NOTIFY_LISTENERS);
+        world
+            .block_registry
+            .prepare(
+                world,
+                pos,
+                &get_block_by_state_id(state.id).unwrap(),
+                state.id,
+                BlockFlags::NOTIFY_LISTENERS,
+            )
+            .await;
+        world.update_neighbors(&pos, None).await;
+        world
+            .block_registry
+            .prepare(
+                world,
+                pos,
+                &Block::AIR,
+                air_state,
+                BlockFlags::NOTIFY_LISTENERS,
+            )
+            .await;
+    }
+
+    for (i, &broken_block_pos) in broken_blocks.iter().rev().enumerate() {
+        if let Some(block_state) = affected_block_states.get(i).cloned() {
+            world
+                .block_registry
+                .on_state_replaced(
+                    world,
+                    &get_block_by_state_id(block_state.id).unwrap(),
+                    broken_block_pos,
+                    block_state.id, // ?
+                    false,
+                )
+                .await;
+            world
+                .block_registry
+                .prepare(
+                    world,
+                    &broken_block_pos,
+                    &get_block_by_state_id(block_state.id).unwrap(),
+                    block_state.id,
+                    BlockFlags::NOTIFY_LISTENERS,
+                )
+                .await;
+            world.update_neighbors(&broken_block_pos, None).await;
+        }
+    }
+
+    for (i, &moved_block_pos) in moved_blocks.iter().rev().enumerate() {
+        world.update_neighbors(&moved_block_pos, None).await;
+    }
+
+    // world.update_neighbors(&extended_pos, None).await;
+
     true
 }

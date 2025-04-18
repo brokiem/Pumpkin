@@ -1669,7 +1669,6 @@ impl World {
         let block_entity_nbt = block_entity.chunk_data_nbt();
 
         if let Some(nbt) = &block_entity_nbt {
-            dbg!(nbt);
             let mut bytes = Vec::new();
             to_bytes_unnamed(nbt, &mut bytes).unwrap();
             self.broadcast_packet_all(&CBlockEntityData::new(

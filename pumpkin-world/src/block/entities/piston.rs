@@ -84,7 +84,7 @@ impl BlockEntity for PistonBlockEntity {
                 } else {
                     world
                         .clone()
-                        .set_block_state(&pos, self.pushed_block_state.id, BlockFlags::MOVED)
+                        .set_block_state(&pos, self.pushed_block_state.id, BlockFlags::NOTIFY_ALL | BlockFlags::MOVED)
                         .await;
                     world
                         .clone()
