@@ -2,7 +2,7 @@ use pumpkin_data::{block::BlockState, chunk::Biome};
 use pumpkin_macros::default_block_state;
 use pumpkin_util::{
     math::{position::BlockPos, vector2::Vector2, vector3::Vector3},
-    random::{RandomGenerator, get_seed, xoroshiro128::Xoroshiro},
+    random::{RandomGenerator, get_decorator_seed, xoroshiro128::Xoroshiro},
 };
 
 use crate::{
@@ -590,8 +590,16 @@ impl<'a> ProtoChunk<'a> {
             bottom_section,
             section_coords::section_to_block(chunk_pos.z),
         ));
-        let mut random = RandomGenerator::Xoroshiro(Xoroshiro::from_seed(get_seed()));
+
+        let population_seed =
+            Xoroshiro::get_population_seed(self.random_config.seed, block_pos.0.x, block_pos.0.z);
+
+        // TODO: This needs to be different depending on what biomes are in the chunk -> affects the
+        // random
         for (name, feature) in PLACED_FEATURES.iter() {
+            // TODO: Properly set index and step
+            let decorator_seed = get_decorator_seed(population_seed, 0, 0);
+            let mut random = RandomGenerator::Xoroshiro(Xoroshiro::from_seed(decorator_seed));
             feature.generate(self, min_y, height, name, &mut random, block_pos);
         }
     }
