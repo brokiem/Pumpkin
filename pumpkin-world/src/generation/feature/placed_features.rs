@@ -61,27 +61,27 @@ impl PlacedFeature {
         let mut stream: Vec<BlockPos> = vec![pos];
 
         for modifier in &self.placement {
-            let mut next_stream: Vec<BlockPos> = Vec::new();
-            for posx in stream {
-                if let Some(positions) = modifier.get_positions(
-                    chunk,
-                    min_y,
-                    height,
-                    feature_name,
-                    random,
-                    BlockPos(Vector3::new(pos.0.x, pos.0.y, pos.0.z)),
-                ) {
-                    next_stream.extend(positions);
+            let mut new_stream = Vec::with_capacity(stream.len());
+
+            // Using filter map gives an annoying error
+            for block_pos in stream {
+                if let Some(positions) =
+                    modifier.get_positions(chunk, min_y, height, feature_name, random, block_pos)
+                {
+                    new_stream.extend(positions);
                 }
             }
-            stream = next_stream;
+
+            stream = new_stream;
         }
+
         let feature = match &self.feature {
             Feature::Named(name) => CONFIGURED_FEATURES
                 .get(&name.replace("minecraft:", ""))
                 .unwrap(),
             Feature::Inlined(feature) => feature,
         };
+
         let mut ret = false;
         for pos in stream {
             if feature.generate(chunk, min_y, height, feature_name, random, pos) {
