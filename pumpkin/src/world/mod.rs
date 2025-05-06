@@ -481,24 +481,14 @@ impl World {
         };
 
         // Teleport
-        let (position, yaw, pitch) = if player.has_played_before.load(Ordering::Relaxed) {
-            let position = player.position();
-            let yaw = player.living_entity.entity.yaw.load(); //info.spawn_angle;
-            let pitch = player.living_entity.entity.pitch.load();
-
-            (position, yaw, pitch)
-        } else {
-            let info = &self.level.level_info;
-            let position = Vector3::new(
-                f64::from(info.spawn_x),
-                f64::from(info.spawn_y) + 1.0,
-                f64::from(info.spawn_z),
-            );
-            let yaw = info.spawn_angle;
-            let pitch = 0.0;
-
-            (position, yaw, pitch)
-        };
+        let info = &self.level.level_info;
+        let position = Vector3::new(
+            f64::from(info.spawn_x),
+            f64::from(info.spawn_y) + 50.0,
+            f64::from(info.spawn_z),
+        );
+        let yaw = info.spawn_angle;
+        let pitch = 0.0;
 
         let velocity = player.living_entity.entity.velocity.load();
 
@@ -568,44 +558,44 @@ impl World {
 
         log::debug!("Broadcasting player spawn for {}", player.gameprofile.name);
         // Spawn the player for every client.
-        self.broadcast_packet_except(
-            &[player.gameprofile.id],
-            &CSpawnEntity::new(
-                entity_id.into(),
-                gameprofile.id,
-                i32::from(EntityType::PLAYER.id).into(),
-                position,
-                pitch,
-                yaw,
-                yaw,
-                0.into(),
-                velocity,
-            ),
-        )
-        .await;
+        // self.broadcast_packet_except(
+        //     &[player.gameprofile.id],
+        //     &CSpawnEntity::new(
+        //         entity_id.into(),
+        //         gameprofile.id,
+        //         i32::from(EntityType::PLAYER.id).into(),
+        //         position,
+        //         pitch,
+        //         yaw,
+        //         yaw,
+        //         0.into(),
+        //         velocity,
+        //     ),
+        // )
+        // .await;
 
         // Spawn players for our client.
-        let id = player.gameprofile.id;
-        for (_, existing_player) in self.players.read().await.iter().filter(|c| c.0 != &id) {
-            let entity = &existing_player.living_entity.entity;
-            let pos = entity.pos.load();
-            let gameprofile = &existing_player.gameprofile;
-            log::debug!("Sending player entities to {}", player.gameprofile.name);
-            player
-                .client
-                .enqueue_packet(&CSpawnEntity::new(
-                    existing_player.entity_id().into(),
-                    gameprofile.id,
-                    i32::from(EntityType::PLAYER.id).into(),
-                    pos,
-                    entity.yaw.load(),
-                    entity.pitch.load(),
-                    entity.head_yaw.load(),
-                    0.into(),
-                    entity.velocity.load(),
-                ))
-                .await;
-        }
+        // let id = player.gameprofile.id;
+        // for (_, existing_player) in self.players.read().await.iter().filter(|c| c.0 != &id) {
+        //     let entity = &existing_player.living_entity.entity;
+        //     let pos = entity.pos.load();
+        //     let gameprofile = &existing_player.gameprofile;
+        //     log::debug!("Sending player entities to {}", player.gameprofile.name);
+        //     player
+        //         .client
+        //         .enqueue_packet(&CSpawnEntity::new(
+        //             existing_player.entity_id().into(),
+        //             gameprofile.id,
+        //             i32::from(EntityType::PLAYER.id).into(),
+        //             pos,
+        //             entity.yaw.load(),
+        //             entity.pitch.load(),
+        //             entity.head_yaw.load(),
+        //             0.into(),
+        //             entity.velocity.load(),
+        //         ))
+        //         .await;
+        // }
 
         // Entity meta data
         // Set skin parts
@@ -1058,7 +1048,7 @@ impl World {
             current_players.insert(uuid, player.clone())
         };
 
-        let current_players = self.players.clone();
+        // let current_players = self.players.clone();
         player.clone().spawn_task(async move {
             let msg_comp = TextComponent::translate(
                 "multiplayer.player.joined",
@@ -1074,11 +1064,11 @@ impl World {
                 .await;
 
             if !event.cancelled {
-                let current_players = current_players.clone();
-                let players = current_players.read().await;
-                for player in players.values() {
-                    player.send_system_message(&event.join_message).await;
-                }
+                // let current_players = current_players.clone();
+                // let players = current_players.read().await;
+                // for player in players.values() {
+                //     player.send_system_message(&event.join_message).await;
+                // }
                 log::info!("{}", event.join_message.clone().to_pretty_console());
             }
         });
@@ -1133,10 +1123,10 @@ impl World {
                 .await;
 
             if !event.cancelled {
-                let players = self.players.read().await;
-                for player in players.values() {
-                    player.send_system_message(&event.leave_message).await;
-                }
+                // let players = self.players.read().await;
+                // for player in players.values() {
+                //     player.send_system_message(&event.leave_message).await;
+                // }
                 log::info!("{}", event.leave_message.clone().to_pretty_console());
             }
         }

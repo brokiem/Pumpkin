@@ -673,9 +673,9 @@ impl Player {
             let delta = (delta_pos.horizontal_length() * 100.0).round() as i32;
             if delta > 0 {
                 if self.living_entity.entity.sprinting.load(Ordering::Relaxed) {
-                    self.add_exhaustion(0.1 * delta as f32 * 0.01).await;
+                    // self.add_exhaustion(0.1 * delta as f32 * 0.01).await;
                 } else {
-                    self.add_exhaustion(0.0 * delta as f32 * 0.01).await;
+                    // self.add_exhaustion(0.0 * delta as f32 * 0.01).await;
                 }
             }
         }

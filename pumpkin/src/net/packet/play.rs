@@ -147,8 +147,7 @@ impl Player {
             return;
         }
         // y = feet Y
-        let position = packet.position;
-        if position.x.is_nan() || position.y.is_nan() || position.z.is_nan() {
+        if packet.position.x.is_nan() || packet.position.y.is_nan() || packet.position.z.is_nan() {
             self.kick(TextComponent::translate(
                 "multiplayer.disconnect.invalid_player_movement",
                 [],
@@ -156,11 +155,7 @@ impl Player {
             .await;
             return;
         }
-        let position = Vector3::new(
-            Self::clamp_horizontal(position.x),
-            Self::clamp_vertical(position.y),
-            Self::clamp_horizontal(position.z),
-        );
+        let position = self.living_entity.entity.pos.load();
 
         send_cancellable! {{
             PlayerMoveEvent {
@@ -181,7 +176,7 @@ impl Player {
                     && !packet.ground
                     && height_difference > 0.0
                 {
-                    self.jump().await;
+                    // self.jump().await;
                 }
 
                 entity
@@ -255,10 +250,9 @@ impl Player {
             return;
         }
         // y = feet Y
-        let position = packet.position;
-        if position.x.is_nan()
-            || position.y.is_nan()
-            || position.z.is_nan()
+        if packet.position.x.is_nan()
+            || packet.position.y.is_nan()
+            || packet.position.z.is_nan()
             || packet.yaw.is_infinite()
             || packet.pitch.is_infinite()
         {
@@ -270,16 +264,12 @@ impl Player {
             return;
         }
 
-        let position = Vector3::new(
-            Self::clamp_horizontal(position.x),
-            Self::clamp_vertical(position.y),
-            Self::clamp_horizontal(position.z),
-        );
+        let position = self.living_entity.entity.pos.load();
 
         send_cancellable! {{
             PlayerMoveEvent::new(
                 self.clone(),
-                self.living_entity.entity.pos.load(),
+                position,
                 position,
             );
 
@@ -294,7 +284,7 @@ impl Player {
                     && !packet.ground
                     && height_difference > 0.0
                 {
-                    self.jump().await;
+                    // self.jump().await;
                 }
                 entity
                     .on_ground
